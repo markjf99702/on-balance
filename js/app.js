@@ -160,7 +160,7 @@ function home() {
     </div>
     <div class="keep">
       <p>Your decisions stay in this browser. Nothing is sent anywhere unless you share a link.</p>
-      <button type="button" class="link-btn" data-act="save">Save a backup</button>
+      <button type="button" class="link-btn" data-act="save"${canSave() ? '' : ' hidden'}>Save a backup</button>
       <label class="link-btn">Load a backup<input type="file" id="loadBackup" accept=".json,application/json"></label>
     </div>`;
   startIdle();
@@ -194,6 +194,12 @@ function home() {
       }
     },
   });
+}
+
+// The one-file copy shown inside another page can't start a download.
+function canSave() {
+  if (!('single' in document.documentElement.dataset)) return true;
+  try { return window.top === window.self; } catch { return false; }
 }
 
 // The little balance on the home screen, rocking gently.

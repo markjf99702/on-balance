@@ -86,9 +86,13 @@ export function sheet(html, bind) {
 export async function copy(text, field) {
   try {
     await navigator.clipboard.writeText(text);
+    toast('Link copied');
   } catch {
+    // Some browsers and embedded views refuse the clipboard: select the link so it can be copied by hand.
+    field?.focus();
     field?.select();
-    document.execCommand?.('copy');
+    let done = false;
+    try { done = document.execCommand('copy'); } catch { /* not allowed here either */ }
+    toast(done ? 'Link copied' : 'The link is selected. Copy it from there.');
   }
-  toast('Link copied');
 }
