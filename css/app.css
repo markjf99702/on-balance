@@ -94,6 +94,9 @@ h1, h2, h3 { font-family: var(--display); font-optical-sizing: auto; font-weight
 .bar-link:hover { color: var(--ink); text-decoration: underline; }
 
 main { max-width: 720px; margin: 0 auto; padding: 18px 16px 120px; outline: none; }
+.jd-foot { max-width: 720px; margin: 0 auto; padding: 0 16px calc(28px + env(safe-area-inset-bottom)); text-align: center; font-size: .85rem; color: var(--muted); }
+.jd-foot a { text-underline-offset: 2px; }
+.jd-foot a:hover { color: var(--ink); }
 .noscript { text-align: center; padding: 3rem 16px; }
 
 /* Buttons */
