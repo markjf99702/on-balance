@@ -63,6 +63,11 @@ async function scoreAll(page, scores) {
 // ---------- Mark makes a decision ----------
 const mark = await device();
 let page = mark.page;
+// Every tool at junkdrawer.works/… shares one address, and so one cache storage. Another tool's offline copy,
+// made before On Balance's worker starts, has to survive it, while an old copy of On Balance's own goes
+// (checked once the worker is in charge, near the end).
+await page.goto(base + 'manifest.webmanifest');
+await page.evaluate(() => Promise.all(['another-tool-v1', 'on-balance-v0'].map(name => caches.open(name).then(c => c.put('index.html', new Response(name))))));
 await page.goto(base);
 await page.evaluate(() => document.fonts.ready);
 assert.match(await text(page), /Weigh up a hard choice/);
@@ -210,6 +215,10 @@ assert.equal(saved.decisions.length, 2);
 await page.reload();
 assert.equal(await page.locator('.dlist li').count(), 2);
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 10000 }).catch(() => {});
+// The worker leaves other tools' offline copies alone, and clears out its own old ones.
+await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 20000 });
+assert.ok(await page.evaluate(() => caches.has('another-tool-v1')), 'the service worker deleted another tool’s offline copy');
+assert.equal(await page.evaluate(() => caches.has('on-balance-v0')), false, 'the service worker kept an old copy of its own');
 await mark.ctx.setOffline(true);
 await page.reload();
 assert.match(await text(page), /Your decisions/, 'loads offline');
