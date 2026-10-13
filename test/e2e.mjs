@@ -512,6 +512,31 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Two choices that come out level ----------
+// Only a change to a score can separate two that score the same on everything.
+{
+  const { ctx, page } = await device();
+  await page.goto(base);
+  const id = await page.evaluate(() => {
+    const { store, M } = window.onBalance;
+    const d = M.blankDecision();
+    d.title = 'Which sofa?';
+    d.options = [{ id: 'a', name: 'Grey sofa' }, { id: 'b', name: 'Green sofa' }];
+    d.criteria = [{ id: 'x', name: 'Comfort', color: 0 }, { id: 'y', name: 'Price', color: 1 }, { id: 'z', name: 'Size', color: 2 }];
+    M.setPair(d.me.pairs, 'x', 'y', 1);
+    M.setPair(d.me.pairs, 'y', 'z', 1);
+    M.setPair(d.me.pairs, 'x', 'z', 2);
+    d.me.scores = { x: { a: 4, b: 4 }, y: { a: 3, b: 3 }, z: { a: 2, b: 2 } };
+    store.put(d);
+    return d.id;
+  });
+  await page.goto(base + `#/d/${id}/result`);
+  await page.locator('.flip-list').waitFor();
+  assert.match(await page.locator('.flip-list').innerText(), /They score the same on everything, so only a change to a score would tip it/);
+  assert.doesNotMatch(await page.locator('.sure').innerText(), /still/, 'nothing still wins when they’re level');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

@@ -269,9 +269,11 @@ export function hash(str) {
 // one weight moved (to: its new share in whole percent, the others keeping their proportions),
 // and one score moved (whole points only).
 // Scores are only suggested for one person's answers (withScores), since a blend of several has no one score to move.
+// When the two are level there's nothing to cross: any change to a score, or to how much something they
+// score differently on counts, tips it one way or the other (differ: those things, empty if none).
 export function flips(decision, view, winner, runner, withScores = true) {
   const D = winner.total - runner.total;
-  if (D < 1e-6) return { tie: true };
+  if (D < 1e-6) return { tie: true, differ: decision.criteria.map(c => c.id).filter(id => Math.abs(view.u[runner.id][id] - view.u[winner.id][id]) > 1e-9) };
   let weight = null;
   for (const c of decision.criteria) {
     const w = view.w[c.id];

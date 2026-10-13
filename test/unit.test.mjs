@@ -291,3 +291,26 @@ test('answers that go round a bigger circle are noticed too, the smallest circle
   for (const [a, b] of [['cost', 'space'], ['space', 'risk'], ['risk', 'looks'], ['cost', 'looks']]) M.setPair(line, a, b, 1);
   assert.deepEqual(M.circles(ids, line), []);
 });
+
+test('when two choices are level, only what they differ on can tip them', () => {
+  const d = M.blankDecision();
+  d.options = [{ id: 'a', name: 'Grey sofa' }, { id: 'b', name: 'Green sofa' }];
+  d.criteria = [{ id: 'x', name: 'Comfort', color: 0 }, { id: 'y', name: 'Price', color: 1 }, { id: 'z', name: 'Size', color: 2 }];
+  const shift = (view, cid, share) => {
+    const w = { ...view.w }, rest = 1 - w[cid];
+    for (const id in w) w[id] = id === cid ? share : (w[id] / rest) * (1 - share);
+    const [p, q] = M.ranking(d, { ...view, w });
+    return Math.abs(p.total - q.total) > 1e-9;
+  };
+  // The same scores on everything: no weight can separate them.
+  Object.assign(d.me, { mode: 'manual', manual: { x: 6, y: 3, z: 2 }, scores: { x: { a: 4, b: 4 }, y: { a: 3, b: 3 }, z: { a: 2, b: 2 } } });
+  let view = M.viewOf(d, d.me);
+  assert.deepEqual(M.flips(d, view, ...M.ranking(d, view)), { tie: true, differ: [] });
+  for (const c of d.criteria) for (const share of [0, 0.3, 0.9]) assert.equal(shift(view, c.id, share), false);
+  // Level because Comfort and Price cancel out: their weights tip it, Size's doesn't.
+  Object.assign(d.me, { manual: { x: 5, y: 5, z: 5 }, scores: { x: { a: 4, b: 2 }, y: { a: 2, b: 4 }, z: { a: 3, b: 3 } } });
+  view = M.viewOf(d, d.me);
+  assert.deepEqual(M.flips(d, view, ...M.ranking(d, view)), { tie: true, differ: ['x', 'y'] });
+  assert.equal(shift(view, 'x', 0.5), true);
+  assert.equal(shift(view, 'z', 0.6), false);
+});

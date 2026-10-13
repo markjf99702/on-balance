@@ -6,9 +6,10 @@ import { joinLink, answerLink } from './share.js';
 import { scaleSVG, setTilt, tiltFor } from './scale.js';
 import { esc, dot, tagged, pct, ui, frame, on, go, toast, toastAction, sheet, copy, day, names, fromName, notReady } from './ui.js';
 
-function listWords(items) {
-  return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+function listWords(items, and = 'and') {
+  return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} ${and} ${items[items.length - 1]}`;
 }
+const orWords = items => listWords(items, 'or');
 
 export function result(d) {
   const p = M.progress(d, d.me);
@@ -47,7 +48,7 @@ export function result(d) {
       : level ? `Level with ${esc(n[R.id])} on ${w100}. The coin below might help.`
       : `comes out ahead of ${esc(n[R.id])}, ${w100} to ${r100}.`;
     const others = alive.slice(1).map(r => `${esc(n[r.id])} ${Math.round(shares[r.id] * 100)}`).filter(s => !s.endsWith(' 0'));
-    const sure = R ? `When every weight and score is nudged a little either way, <b>${esc(n[W.id])}</b> still wins <b>${Math.round(shares[W.id] * 100)} times in 100</b>${others.length ? `, ${listWords(others)}` : ''}.` : '';
+    const sure = R ? `When every weight and score is nudged a little either way, <b>${esc(n[W.id])}</b>${level ? '' : ' still'} wins <b>${Math.round(shares[W.id] * 100)} times in 100</b>${others.length ? `, ${listWords(others)}` : ''}.` : '';
     const decided = d.decided && d.options.find(o => o.id === d.decided.option);
     const label = R ? `A balance tipping towards ${n[W.id]}, ${w100}, over ${n[R.id]}, ${r100}` : `${n[W.id]}`;
 
@@ -68,7 +69,10 @@ export function result(d) {
       const f = M.flips(d, view, W, R, sel !== 'together');
       const items = [];
       if (f.tie) {
-        items.push('They’re level, so any change to how much something counts, or to a score, would tip it one way or the other.');
+        const counts = f.differ.length === d.criteria.length ? 'something' : orWords(f.differ.map(id => tagged(crit[id])));
+        items.push(f.differ.length
+          ? `They’re level, so any change to how much ${counts} counts, or to a score, would tip it one way or the other.`
+          : 'They score the same on everything, so only a change to a score would tip it one way or the other.');
       } else {
         if (f.weight) {
           const c = crit[f.weight.criterion];
