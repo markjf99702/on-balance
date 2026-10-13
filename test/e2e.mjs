@@ -359,6 +359,25 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Enter in a sheet's name field ----------
+// As a phone keyboard's Go key: the link sheet stays open, and the hand-over sheet hands it over.
+{
+  const { ctx, page } = await device();
+  await page.goto(base + '#/example/1');
+  await page.locator('.verdict').waitFor();
+  await page.click('[data-act="ask"]');
+  await page.fill('#sheetName', 'Mark');
+  await page.press('#sheetName', 'Enter');
+  assert.equal(await page.locator('#sheet').evaluate(d => d.open), true, 'Enter keeps the link sheet open');
+  await page.click('.sheet button[value="close"]');
+  await page.click('[data-act="hand"]');
+  await page.fill('#sheetName', 'Ana');
+  await page.press('#sheetName', 'Enter');
+  await page.locator('#myname').waitFor({ timeout: 5000 });
+  assert.match(await text(page), /Ana is weighing this up/);
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

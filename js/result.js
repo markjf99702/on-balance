@@ -263,7 +263,7 @@ function linkSheet({ title, blurb, nameLabel, name, placeholder, makeLink, onNam
   sheet(`
     <h2>${title}</h2>
     <p>${blurb}</p>
-    <label class="field"><span>${nameLabel}</span><input class="input" id="sheetName" value="${esc(name)}" maxlength="40" autocomplete="given-name" placeholder="${placeholder}"></label>
+    <label class="field"><span>${nameLabel}</span><input class="input" id="sheetName" value="${esc(name)}" maxlength="40" autocomplete="given-name" enterkeyhint="done" placeholder="${placeholder}"></label>
     <textarea id="sheetLink" readonly aria-label="The link"></textarea>
     <div class="row">
       <button class="btn" value="close">Close</button>
@@ -278,6 +278,12 @@ function linkSheet({ title, blurb, nameLabel, name, placeholder, makeLink, onNam
     body.querySelector('#sheetCopy').onclick = () => copy(field.value, field);
     const share = body.querySelector('#sheetShare');
     if (share) share.onclick = () => navigator.share({ title: 'On Balance', url: field.value }).catch(() => {});
+    // Enter (Done on a phone keyboard) would close the sheet, as Close comes first: go on to sending instead.
+    input.addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      (share || body.querySelector('#sheetCopy')).focus();
+    });
   });
 }
 
@@ -310,8 +316,14 @@ function handSheet(d) {
   sheet(`
     <h2>Pass them this phone</h2>
     <p>They’ll get the same choices and the same list of what matters, without your answers. When they’re done, their answers join yours here.</p>
-    <label class="field"><span>Your name</span><input class="input" id="sheetName" value="${esc(store.name)}" maxlength="40" autocomplete="given-name" placeholder="So they know who’s asking"></label>
+    <label class="field"><span>Your name</span><input class="input" id="sheetName" value="${esc(store.name)}" maxlength="40" autocomplete="given-name" enterkeyhint="go" placeholder="So they know who’s asking"></label>
     <div class="row"><button class="btn" value="close">Cancel</button><button type="button" class="btn primary" id="sheetGo">Hand it over</button></div>`, (body, close) => {
+    // Enter (Go on a phone keyboard) hands it over, rather than cancelling, which comes first.
+    body.querySelector('#sheetName').addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      body.querySelector('#sheetGo').click();
+    });
     body.querySelector('#sheetGo').onclick = () => {
       store.name = body.querySelector('#sheetName').value.trim();
       const copyOf = M.blankDecision();
