@@ -377,10 +377,17 @@ export function cleanDecision(d) {
   return d;
 }
 
+// Answers keep only the numbers the app gives them (the same as a link's, in readAnswer), since the
+// weights set by hand and the scores go into the page's markup too.
 function cleanVoice(v) {
   if (!isObject(v)) v = {};
   for (const key of ['pairs', 'manual', 'scores']) if (!isObject(v[key])) v[key] = {};
-  for (const [cid, row] of Object.entries(v.scores)) if (!isObject(row)) delete v.scores[cid];
+  for (const [key, n] of Object.entries(v.pairs)) if (![-2, -1, 0, 1, 2].includes(n)) delete v.pairs[key];
+  for (const [cid, n] of Object.entries(v.manual)) if (!(typeof n === 'number' && n >= 0 && n <= 10)) delete v.manual[cid];
+  for (const [cid, row] of Object.entries(v.scores)) {
+    if (!isObject(row)) delete v.scores[cid];
+    else for (const [oid, s] of Object.entries(row)) if (!(Number.isInteger(s) && s >= 0 && s <= 5)) delete row[oid];
+  }
   if (v.mode !== 'manual') v.mode = 'pairs';
   return v;
 }

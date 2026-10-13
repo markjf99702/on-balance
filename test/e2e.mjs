@@ -260,6 +260,21 @@ await mark.ctx.setOffline(false);
   await page.reload();
   await page.locator('.dlist').waitFor({ timeout: 5000 });
   assert.equal(await page.locator('.dlist li').count(), 2, 'both decisions after a reload');
+  // A made-up backup can't put markup into the page through a weight set by hand or a score.
+  const madeUp = { app: 'on-balance', version: 1, decisions: [{
+    id: 'h2', title: 'Made up', updated: 5,
+    options: [{ id: 'a', name: 'Walk' }, { id: 'b', name: 'Drive' }],
+    criteria: [{ id: 'c', name: 'Cost', color: 0 }, { id: 'e', name: 'Ease', color: 1 }],
+    me: { mode: 'manual', pairs: {}, manual: { c: '5" data-planted="', e: 5 }, scores: { c: { a: '3 <b data-planted>', b: 4 }, e: { a: 3, b: 4 } } },
+    others: [{ name: 'Sam', at: 5, mode: 'pairs', pairs: { 'c|e': 1 }, manual: {}, scores: { c: { a: 0, b: 4 }, e: { a: 3, b: 4 } } }],
+  }] };
+  await page.locator('#loadBackup').setInputFiles({ name: 'made-up.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(madeUp)) });
+  await page.locator('#toast:has-text("Loaded 1 decision")').waitFor({ timeout: 5000 });
+  for (const step of ['weigh', 'result']) {
+    await page.goto(base + `#/d/h2/${step}`);
+    await page.locator('#steps').waitFor();
+    assert.equal(await page.locator('[data-planted]').count(), 0, `nothing in the backup's answers is planted on ${step}`);
+  }
   await ctx.close();
 }
 

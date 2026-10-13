@@ -232,7 +232,7 @@ test('a link brings only ids the app makes, since ids go into the page as they a
 
 test('saved decisions come back as they were, and damaged ones are put right', () => {
   // Anything the app saved comes through unchanged.
-  const saved = [makeExample(0), makeExample(1), makeExample(2), ...Array.from({ length: 40 }, (_, i) => randomDecision(i + 1))];
+  const saved = [makeExample(0), makeExample(1), makeExample(2), ...Array.from({ length: 40 }, (_, i) => randomDecision(i + 1)), ...Array.from({ length: 20 }, (_, i) => handWeighted(i + 1))];
   saved[3].shared = { id: 'k3x9q', from: 'Mark', name: 'Sam' };
   saved[4].decided = { option: saved[4].options[0].id, at: 5 };
   saved[5].me.enough = true;
@@ -255,6 +255,17 @@ test('saved decisions come back as they were, and damaged ones are put right', (
   assert.deepEqual(d.others.map(o => [o.name, o.scores]), [['Someone', {}]]);
   assert.equal(d.shared, null);
   assert.equal(M.ranking(d, M.viewOf(d, d.me)).length, 2);
+
+  // Answers keep only the numbers the app gives them, since weights and scores go into the page's markup too.
+  const odd = M.cleanDecision({
+    id: 'h2', title: 'Walk or drive',
+    options: [{ id: 'a', name: 'Walk' }, { id: 'b', name: 'Drive' }],
+    criteria: [{ id: 'c', name: 'Cost', color: 0 }, { id: 'e', name: 'Ease', color: 1 }],
+    me: { mode: 'manual', pairs: { 'c|e': '1" x="' }, manual: { c: '5" autofocus onfocus="', e: 7 }, scores: { c: { a: '<img src=x>', b: 4 }, e: { a: 2.5, b: 0 } } },
+    others: [{ name: 'Sam', mode: 'pairs', pairs: { 'c|e': 2 }, manual: {}, scores: { c: { a: 0, b: '4' } } }],
+  });
+  assert.deepEqual(odd.me, { mode: 'manual', pairs: {}, manual: { e: 7 }, scores: { c: { b: 4 }, e: { b: 0 } } });
+  assert.deepEqual([odd.others[0].pairs, odd.others[0].scores], [{ 'c|e': 2 }, { c: { a: 0 } }]);
 });
 
 test('the list is done once two choices and one thing that matters have names', () => {
