@@ -109,7 +109,7 @@ export function result(d) {
         <div class="card gut">
           <h2>Gut check</h2>
           <p class="hint">Flip a coin between the top two. While it’s in the air, notice which way you’re hoping it lands.</p>
-          <div class="coin-wrap"><div class="coin" id="coin"><div class="face heads">${esc(n[W.id])}</div><div class="face tails">${esc(n[R.id])}</div></div></div>
+          <div class="coin-wrap"><div class="coin" id="coin"><div class="face heads"><span>${esc(n[W.id])}</span></div><div class="face tails"><span>${esc(n[R.id])}</span></div></div></div>
           <div class="row"><button type="button" class="btn" data-act="flip">Flip the coin</button></div>
           <div class="gut-after" id="gutAfter" hidden></div>
         </div>`;

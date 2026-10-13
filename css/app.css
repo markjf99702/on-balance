@@ -262,7 +262,10 @@ input[type=range] { width: 100%; accent-color: var(--rc, var(--ink)); height: 32
 .switch { margin-top: 14px; text-align: center; }
 
 /* Score step */
-.crit h2 .dot { width: 14px; height: 14px; align-self: center; }
+/* The dot stays beside the first line of a thing's name, however many lines the name takes. */
+.crit h2 .cname { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.crit h2 .cname > span { min-width: 0; overflow-wrap: anywhere; }
+.crit h2 .dot { width: 14px; height: 14px; align-self: flex-start; margin-top: 4.5px; }
 .scores { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 12px; }
 .scores li { display: grid; gap: 6px; }
 .scores .oname { font-weight: 600; overflow-wrap: anywhere; }
@@ -353,6 +356,7 @@ input[type=range] { width: 100%; accent-color: var(--rc, var(--ink)); height: 32
   box-shadow: inset 0 0 0 5px color-mix(in srgb, var(--brass-lo) 60%, transparent), 0 6px 14px -6px rgba(0, 0, 0, .5);
   overflow-wrap: anywhere;
 }
+.coin .face span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; } /* a long name stays on the coin */
 .coin .tails { transform: rotateX(180deg); }
 .gut .row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .gut-after { text-align: center; }

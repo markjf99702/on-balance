@@ -559,6 +559,42 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Long names on a phone ----------
+// A long thing that matters keeps its dot beside it on Score, and long choices stay on the coin.
+{
+  const { ctx, page } = await device();
+  await page.goto(base);
+  const id = await page.evaluate(() => {
+    const { store, M } = window.onBalance;
+    const d = M.blankDecision();
+    d.title = 'Where to live';
+    d.options = [{ id: 'a', name: 'The little house at the end of Cherry Tree Lane with the green door' }, { id: 'b', name: 'Maybe the flat above the bakery on High Street' }];
+    d.criteria = [{ id: 'x', name: 'How long the commute takes on a bad day', color: 0 }, { id: 'y', name: 'Rent', color: 1 }];
+    M.setPair(d.me.pairs, 'x', 'y', 1);
+    d.me.scores = { x: { a: 5, b: 3 }, y: { a: 3, b: 4 } };
+    store.put(d);
+    return d.id;
+  });
+  await page.goto(base + `#/d/${id}/score`);
+  await page.locator('.crit h2').first().waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  const [dot, name] = await page.locator('.crit h2').first().evaluate(h => {
+    const walk = document.createTreeWalker(h, NodeFilter.SHOW_TEXT, { acceptNode: t => (t.data.trim() && !t.parentElement.closest('.aside') ? 1 : 3) });
+    const words = document.createRange();
+    words.selectNodeContents(walk.nextNode());
+    const middle = r => r.top + r.height / 2;
+    return [middle(h.querySelector('.dot').getBoundingClientRect()), middle(words.getClientRects()[0])];
+  });
+  assert.ok(Math.abs(dot - name) < 6, `the dot sits beside the name's first line (dot at ${dot}, line at ${name})`);
+  await page.goto(base + `#/d/${id}/result`);
+  await page.locator('#coin').waitFor();
+  for (const face of await page.locator('#coin .face').all()) {
+    assert.ok(await face.evaluate(el => el.scrollHeight <= el.clientHeight), 'a long name stays on the coin');
+  }
+  await fits(page, 'the result with long names');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

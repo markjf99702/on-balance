@@ -359,7 +359,7 @@ export function score(d) {
     <p class="lede">Score each choice from 1 (poor) to 5 (great) on each thing. Score how good it is, not how much of it there is: a low price scores high. ✕ rules a choice out, however well it does on everything else.</p>
     ${d.criteria.map(c => `
       <div class="card crit">
-        <h2>${dot(c)}${esc(c.name)} <span class="aside">counts ${pct(w[c.id])}</span></h2>
+        <h2><span class="cname">${dot(c)}<span>${esc(c.name)}</span></span> <span class="aside">counts ${pct(w[c.id])}</span></h2>
         <ul class="scores">${d.options.map(o => {
           const s = v.scores[c.id]?.[o.id];
           return `<li><span class="oname" id="n-${c.id}-${o.id}">${esc(o.name)}</span>
