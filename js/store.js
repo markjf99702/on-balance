@@ -22,6 +22,15 @@ function write() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* can't save here; it still works for this visit */ }
 }
 
+// Another tab saved (or cleared the site's storage): carry on from what's there now,
+// so this tab doesn't save its older copy over the other tab's work.
+const changed = [];
+addEventListener('storage', e => {
+  if (e.key !== KEY && e.key !== null) return;
+  state = read();
+  changed.forEach(f => f());
+});
+
 export const store = {
   all: () => [...state.decisions].sort((a, b) => b.updated - a.updated),
   get: id => state.decisions.find(d => d.id === id),
@@ -36,6 +45,8 @@ export const store = {
     state.decisions = state.decisions.filter(d => d.id !== id);
     write();
   },
+  // f runs after another tab changes what's saved, to draw the screen again from it.
+  onChange(f) { changed.push(f); },
   get name() { return state.name || ''; },
   set name(v) { state.name = String(v || '').slice(0, 40); write(); },
   backup: () => JSON.stringify({ app: 'on-balance', version: 1, saved: new Date().toISOString(), ...state }, null, 1),

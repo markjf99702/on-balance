@@ -17,7 +17,8 @@ const EXAMPLE_NOTES = [
 
 let lastPath = null;
 
-function route() {
+// tidy: false when another tab changed what's saved, and this one is only drawing its screen again.
+function route(tidy = true) {
   const path = location.hash.replace(/^#\/?/, '');
   const [head, a, b] = path.split('/');
   document.getElementById('allLink').hidden = !head;
@@ -49,7 +50,7 @@ function route() {
     document.title = `${d.title || 'Untitled decision'} · On Balance`;
     return STEPS[step](d);
   }
-  home();
+  home(tidy);
 }
 
 // Blank rows left on the list are dropped once you move on.
@@ -129,10 +130,11 @@ function nextStep(d) {
   return 'result';
 }
 
-function home() {
+function home(tidy = true) {
   document.title = 'On Balance';
-  // A decision started and left without a single word typed isn't worth keeping.
-  for (const d of store.all()) {
+  // A decision started and left without a single word typed isn't worth keeping
+  // (unless it's one another tab has only just started).
+  for (const d of tidy ? store.all() : []) {
     if (!d.shared && !d.title.trim() && ![...d.options, ...d.criteria].some(x => x.name.trim())) store.remove(d.id);
   }
   const all = store.all();
@@ -223,7 +225,8 @@ function startIdle() {
 }
 function stopIdle() { cancelAnimationFrame(idle); }
 
-window.addEventListener('hashchange', route);
+window.addEventListener('hashchange', () => route());
+store.onChange(() => route(false));
 route();
 
 if ('serviceWorker' in navigator && !('single' in document.documentElement.dataset) && location.protocol !== 'file:') {

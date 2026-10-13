@@ -26,14 +26,18 @@ const base = `http://localhost:${server.address().port}/`;
 const browser = await pw.chromium.launch();
 const problems = [];
 
-async function device() {
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
-  await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
-  const page = await ctx.newPage();
+function watch(page) {
   page.on('pageerror', e => problems.push(e.message));
   page.on('console', m => { if (m.type() === 'error') problems.push(m.text()); });
   page.on('requestfailed', r => problems.push('failed: ' + r.url()));
   page.on('request', r => { if (!r.url().startsWith(base)) problems.push('left the site: ' + r.url()); });
+  return page;
+}
+
+async function device() {
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true });
+  await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
+  const page = watch(await ctx.newPage());
   return { ctx, page };
 }
 
@@ -254,6 +258,39 @@ await mark.ctx.setOffline(false);
   await page.reload();
   await page.locator('.dlist').waitFor({ timeout: 5000 });
   assert.equal(await page.locator('.dlist li').count(), 2, 'both decisions after a reload');
+  await ctx.close();
+}
+
+// ---------- Two tabs ----------
+// Each tab carries on from what the other saved, rather than saving its own older copy over it.
+{
+  const { ctx, page: a } = await device();
+  const b = watch(await ctx.newPage());
+  await a.goto(base + '#/example/1');
+  await a.locator('.verdict').waitFor();
+  const id = await a.evaluate(() => location.hash.split('/')[2]);
+  const d = await a.evaluate(id => window.onBalance.store.get(id), id);
+  const threes = Object.fromEntries(d.criteria.map(c => [c.id, Object.fromEntries(d.options.map(o => [o.id, 3]))]));
+  // Sam's answers come back, and open in a second tab, as tapping a link in a message does.
+  await b.goto(base + '#/answer/' + pack({ v: 1, id, n: 'Sam', m: 'pairs', p: {}, h: {}, s: threes }));
+  await b.waitForURL(/\/result$/);
+  // The first tab, still on the result, shows them too, and deciding there keeps them.
+  await a.locator('.voices button:has-text("Sam")').waitFor({ timeout: 5000 });
+  await a.click('[data-decide]');
+  const saved = await b.evaluate(id => JSON.parse(localStorage.getItem('on-balance')).decisions.find(x => x.id === id), id);
+  assert.deepEqual(saved.others.map(o => o.name), ['Sam'], 'deciding in the first tab kept Sam’s answers');
+  assert.ok(saved.decided, 'and it’s decided');
+  // A decision started in one tab while the other sits on the home screen isn't tidied away or saved over.
+  await a.goto(base + '#/');
+  await a.locator('.dlist').waitFor();
+  await b.goto(base + '#/new');
+  await b.locator('#title').waitFor();
+  await a.waitForTimeout(300);
+  await b.fill('#title', 'Paint the hall');
+  await a.locator('.dlist li:has-text("Paint the hall")').waitFor({ timeout: 5000 });
+  await a.locator('.ditem:has-text("Northwind") .del').click();
+  assert.deepEqual(await b.evaluate(() => JSON.parse(localStorage.getItem('on-balance')).decisions.map(x => x.title)), ['Paint the hall']);
+  assert.match(await b.locator('main').innerText(), /What are you deciding/);
   await ctx.close();
 }
 
