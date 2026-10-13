@@ -342,6 +342,23 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Weigh and Score wait for the list ----------
+{
+  const { ctx, page } = await device();
+  await page.goto(base + '#/new');
+  await page.locator('#title').waitFor();
+  for (const step of ['Weigh', 'Score']) {
+    await page.click(`.steps a:has-text("${step}")`);
+    await page.locator('#body:has-text("Not ready yet")').waitFor({ timeout: 5000 });
+    assert.match(await text(page), /Name at least two choices and one thing that matters/);
+    assert.equal(await page.locator('#next').isHidden(), true, `${step} offers no way on`);
+  }
+  await page.click('text=Finish the list');
+  await page.locator('#title').waitFor();
+  assert.equal(await page.locator('ul.rows input').count(), 4, 'the blank rows are still there to fill in');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

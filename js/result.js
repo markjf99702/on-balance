@@ -4,21 +4,7 @@ import * as M from './model.js';
 import { store } from './store.js';
 import { joinLink, answerLink } from './share.js';
 import { scaleSVG, setTilt, tiltFor } from './scale.js';
-import { esc, dot, tagged, pct, ui, frame, on, go, toast, toastAction, sheet, copy, day, names, fromName } from './ui.js';
-
-function notReady(d) {
-  const p = M.progress(d, d.me);
-  const todo = !p.listed ? ['list', 'Finish the list', 'Name at least two choices and one thing that matters.']
-    : !p.weighed ? ['weigh', 'Weigh what matters', 'Answer a few more questions about what matters more.']
-    : ['score', 'Score the rest', `${p.scoresTotal - p.scored} of ${p.scoresTotal} scores still to fill in.`];
-  frame(d, 'result', `
-    <div class="card empty">
-      <h2>Not ready yet</h2>
-      <p class="hint">${todo[2]}</p>
-      <a class="btn primary" href="#/d/${d.id}/${todo[0]}">${todo[1]} →</a>
-    </div>`);
-  on({});
-}
+import { esc, dot, tagged, pct, ui, frame, on, go, toast, toastAction, sheet, copy, day, names, fromName, notReady } from './ui.js';
 
 function listWords(items) {
   return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
@@ -26,7 +12,7 @@ function listWords(items) {
 
 export function result(d) {
   const p = M.progress(d, d.me);
-  if (!p.complete) return notReady(d);
+  if (!p.complete) return notReady(d, 'result');
   const n = names(d);
   const crit = Object.fromEntries(d.criteria.map(c => [c.id, c]));
   const mine = !d.shared;

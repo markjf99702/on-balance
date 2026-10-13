@@ -1,7 +1,7 @@
 // The first three steps: list the choices and what matters, weigh what matters, score the choices.
 import * as M from './model.js';
 import { store } from './store.js';
-import { esc, dot, pct, ui, frame, refresh, on, fromName } from './ui.js';
+import { esc, dot, pct, ui, frame, refresh, on, fromName, notReady } from './ui.js';
 
 const IDEAS = ['Cost', 'Time', 'Where it is', 'Quality', 'Space', 'Fun', 'Risk', 'Hassle', 'The people', 'Growth', 'Looks', 'Stress', 'Health', 'Family'];
 
@@ -169,6 +169,7 @@ function weighNext(d) {
 }
 
 export function weigh(d) {
+  if (!M.progress(d, d.me).listed) return notReady(d, 'weigh');
   const v = d.me;
   const crit = Object.fromEntries(d.criteria.map(c => [c.id, c]));
   const ids = d.criteria.map(c => c.id);
@@ -341,6 +342,7 @@ function scoreNext(d) {
 }
 
 export function score(d) {
+  if (!M.progress(d, d.me).listed) return notReady(d, 'score');
   const v = d.me;
   const w = M.voiceWeights(d.criteria, v);
   frame(d, 'score', `

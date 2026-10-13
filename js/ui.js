@@ -55,6 +55,21 @@ export function frame(d, step, body, next = '') {
     <div class="next-bar" id="next"${next ? '' : ' hidden'}>${next}</div>`;
 }
 
+// What a step shows until the steps it needs are done.
+export function notReady(d, step) {
+  const p = M.progress(d, d.me);
+  const todo = !p.listed ? ['list', 'Finish the list', 'Name at least two choices and one thing that matters.']
+    : !p.weighed ? ['weigh', 'Weigh what matters', 'Answer a few more questions about what matters more.']
+    : ['score', 'Score the rest', `${p.scoresTotal - p.scored} of ${p.scoresTotal} scores still to fill in.`];
+  frame(d, step, `
+    <div class="card empty">
+      <h2>Not ready yet</h2>
+      <p class="hint">${todo[2]}</p>
+      <a class="btn primary" href="#/d/${d.id}/${todo[0]}">${todo[1]} →</a>
+    </div>`);
+  on({});
+}
+
 export function refresh(d, step, next) {
   document.getElementById('steps').innerHTML = stepsHTML(d, step);
   if (next !== undefined) {

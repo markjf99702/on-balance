@@ -46,14 +46,14 @@ function route(tidy = true) {
     const d = store.get(a);
     if (!d) return message('That decision isn’t here', 'It may have been deleted, or it was made on another device.');
     const step = STEPS[b] ? b : 'list';
-    if (step !== 'list') prune(d);
+    if (step !== 'list' && M.progress(d, d.me).listed) prune(d);
     document.title = `${d.title || 'Untitled decision'} · On Balance`;
     return STEPS[step](d);
   }
   home(tidy);
 }
 
-// Blank rows left on the list are dropped once you move on.
+// Blank rows left on the list are dropped once you move on (and the list is done, or the other steps wait for it).
 function prune(d) {
   const blankO = d.options.filter(o => !o.name.trim()), blankC = d.criteria.filter(c => !c.name.trim());
   if (!blankO.length && !blankC.length) return;
