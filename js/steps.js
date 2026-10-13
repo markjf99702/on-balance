@@ -224,10 +224,13 @@ export function weigh(d) {
           const later = schedule.map((p, i) => i).filter(i => i > qi && M.getPair(v.pairs, ...schedule[i]) === undefined);
           const earlier = schedule.map((p, i) => i).filter(i => i < qi && M.getPair(v.pairs, ...schedule[i]) === undefined);
           const nextQ = later[0] ?? earlier[0];
+          const focused = document.activeElement === t;
           setTimeout(() => {
             ui.q[d.id] = nextQ;
             if (nextQ === undefined) v.enough = false;
             weigh(d);
+            // Answering from the keyboard: wait on the same answer to the next question, not back at the top.
+            if (focused) document.querySelector(`.five button[data-v="${t.dataset.v}"]`)?.focus();
           }, 220);
         } else if (t.dataset.go === 'back') {
           ui.q[d.id] = Math.max(0, qi - 1);

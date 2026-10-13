@@ -469,6 +469,25 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Weighing from the keyboard ----------
+// After an answer, the focus waits on the same answer to the next question, instead of going back to the top.
+{
+  const { ctx, page } = await device();
+  await page.goto(base + '#/example/0');
+  await page.locator('.verdict').waitFor();
+  const id = await page.evaluate(() => location.hash.split('/')[2]);
+  await page.evaluate(id => { const { store } = window.onBalance; const d = store.get(id); d.me.pairs = {}; store.put(d); }, id);
+  await page.goto(base + `#/d/${id}/weigh`);
+  await page.locator('.ask').waitFor();
+  await page.locator('.five button[data-v="1"]').focus();
+  await page.keyboard.press('Enter');
+  await page.locator('.ask-top span:has-text("2 of 10")').waitFor({ timeout: 5000 });
+  assert.equal(await page.evaluate(() => document.activeElement.matches('.five button[data-v="1"]')), true, 'the focus is on the next question’s answer');
+  await page.keyboard.press('Enter');
+  await page.locator('.ask-top span:has-text("3 of 10")').waitFor({ timeout: 5000 });
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();
