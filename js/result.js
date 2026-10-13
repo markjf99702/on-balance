@@ -210,7 +210,8 @@ export function result(d) {
         result(d);
         const before = toastAction();
         const removed = [...(before?.from === d.id ? before.removed : []), gone];
-        toast(`Removed ${listWords(removed.map(o => `${o.name}’s`))} answers`, { label: 'Undo', from: d.id, removed, run: () => { d.others.push(...removed); store.put(d); result(d); } });
+        const showing = () => location.hash.replace(/^#\/?/, '') === `d/${d.id}/result`;
+        toast(`Removed ${listWords(removed.map(o => `${o.name}’s`))} answers`, { label: 'Undo', from: d.id, removed, run: () => { d.others.push(...removed); store.put(d); if (showing()) result(d); } });
         return;
       }
       const act = t.dataset.act;

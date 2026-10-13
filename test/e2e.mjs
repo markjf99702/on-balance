@@ -323,6 +323,20 @@ await mark.ctx.setOffline(false);
   assert.match(await page.locator('#toast').innerText(), /Removed Sam’s and Robin’s answers/);
   await page.click('#toast button');
   assert.equal(await page.locator('.people li').count(), 2, 'one Undo brings both people’s answers back');
+  // Undo after moving on to another screen puts things back without drawing over that screen.
+  await page.locator('.people .x').first().tap();
+  await page.click('.steps a:has-text("Score")');
+  await page.locator('.pick').first().waitFor();
+  await page.click('#toast button');
+  assert.equal(await page.locator('.pick').count() > 0, true, 'still on the scores after Undo');
+  assert.equal(await page.evaluate(id => window.onBalance.store.get(id).others.length, id), 2);
+  await page.goto(base + '#/');
+  await page.locator('.del').first().click();
+  await page.locator('.dlist a').first().click();
+  await page.locator('.verdict').waitFor();
+  await page.click('#toast button');
+  assert.equal(await page.locator('.verdict').count(), 1, 'still on the result after Undo');
+  assert.equal(await page.evaluate(() => window.onBalance.store.all().length), 3);
   await ctx.close();
 }
 

@@ -177,7 +177,8 @@ function home(tidy = true) {
         home();
         const deleted = [...(toastAction()?.deleted || []), d];
         const what = deleted.length > 1 ? `${deleted.length} decisions` : `“${d.title || 'Untitled decision'}”`;
-        toast(`Deleted ${what}`, { label: 'Undo', deleted, run: () => { deleted.forEach(x => store.put(x)); home(); } });
+        // Undo puts them back, and draws the list again only if it's still the home screen showing.
+        toast(`Deleted ${what}`, { label: 'Undo', deleted, run: () => { deleted.forEach(x => store.put(x)); if (!location.hash.replace(/^#\/?/, '')) home(); } });
       } else if (t.dataset.act === 'save') {
         const url = URL.createObjectURL(new Blob([store.backup()], { type: 'application/json' }));
         const a = Object.assign(document.createElement('a'), { href: url, download: `on-balance-${new Date().toISOString().slice(0, 10)}.json` });
