@@ -152,6 +152,7 @@ main { max-width: 720px; margin: 0 auto; padding: 18px 16px 120px; outline: none
 .keep p { margin: 0; flex: 1 1 100%; }
 .keep label { cursor: pointer; }
 .keep input[type=file] { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.keep label:has(:focus-visible) { outline: 3px solid var(--brass); outline-offset: 2px; }
 
 /* Decision header and steps */
 .dhead { margin: 2px 0 16px; }

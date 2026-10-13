@@ -408,6 +408,19 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Load a backup, from the keyboard ----------
+// Its file field is hidden behind the words, so the words show the focus.
+{
+  const { ctx, page } = await device();
+  await page.goto(base);
+  await page.locator('.keep').waitFor();
+  const focused = () => page.evaluate(() => document.activeElement?.id);
+  for (let i = 0; i < 30 && await focused() !== 'loadBackup'; i++) await page.keyboard.press('Tab');
+  assert.equal(await focused(), 'loadBackup');
+  assert.equal(await page.locator('.keep label').evaluate(el => getComputedStyle(el).outlineStyle), 'solid', 'Load a backup shows it has the focus');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();
