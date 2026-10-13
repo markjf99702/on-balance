@@ -157,10 +157,11 @@ export function progress(decision, voice) {
   }
   const manual = voice?.mode === 'manual';
   const weighed = manual || isConnected(ids, voice?.pairs || {});
+  const named = list => list.filter(x => x.name.trim()).length; // a blank row on the list doesn't count yet
   return {
     pairsTotal, pairsDone, weighed,
     scored, scoresTotal: decision.options.length * decision.criteria.length,
-    listed: decision.options.length >= 2 && decision.criteria.length >= 1,
+    listed: named(decision.options) >= 2 && named(decision.criteria) >= 1,
     get complete() { return this.listed && this.weighed && this.scored === this.scoresTotal; },
   };
 }

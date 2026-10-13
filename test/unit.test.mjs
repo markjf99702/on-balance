@@ -256,3 +256,16 @@ test('saved decisions come back as they were, and damaged ones are put right', (
   assert.equal(d.shared, null);
   assert.equal(M.ranking(d, M.viewOf(d, d.me)).length, 2);
 });
+
+test('the list is done once two choices and one thing that matters have names', () => {
+  const d = M.blankDecision();
+  d.options = [{ id: 'a1', name: '' }, { id: 'a2', name: '' }];
+  d.criteria = [{ id: 'b1', name: '', color: 0 }, { id: 'b2', name: '', color: 1 }];
+  assert.equal(M.progress(d, d.me).listed, false, 'blank rows are not a list');
+  d.options[0].name = 'Tea';
+  d.options[1].name = ' ';
+  d.criteria[0].name = 'Taste';
+  assert.equal(M.progress(d, d.me).listed, false);
+  d.options[1].name = 'Coffee';
+  assert.equal(M.progress(d, d.me).listed, true);
+});

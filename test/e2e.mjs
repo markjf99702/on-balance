@@ -80,6 +80,7 @@ await fits(page, 'the home screen');
 
 await page.click('text=Start a decision');
 await page.locator('#title').waitFor();
+assert.equal(await page.locator('#steps a.done').count(), 0, 'a new decision has no steps ticked');
 await page.fill('#title', 'Which apartment');
 const opts = page.locator('ul[data-kind=option] input');
 await opts.nth(0).fill('Maple Street');
@@ -91,6 +92,7 @@ await crits.nth(0).fill('Rent');
 await crits.nth(1).fill('Commute');
 await page.click('.chip[data-idea="Space"]');
 assert.equal(await page.locator('ul[data-kind=criterion] li').count(), 3, 'an idea adds a row');
+assert.deepEqual(await page.locator('#steps a.done').allInnerTexts(), ['✓\nList'], 'the list is ticked once it has names');
 await fits(page, 'the list');
 
 await next(page, '.ask');
