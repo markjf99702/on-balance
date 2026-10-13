@@ -378,6 +378,36 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- The little balance on the home screen ----------
+// It rocks on one animation loop however often home is drawn, and stops once home is left.
+{
+  const { ctx, page } = await device();
+  await page.addInitScript(() => {
+    const raf = window.requestAnimationFrame.bind(window), caf = window.cancelAnimationFrame.bind(window);
+    const waiting = new Set();
+    window.requestAnimationFrame = cb => { const id = raf(t => { waiting.delete(id); cb(t); }); waiting.add(id); return id; };
+    window.cancelAnimationFrame = id => { waiting.delete(id); caf(id); };
+    window.loops = () => waiting.size;
+  });
+  for (const i of [1, 2]) {
+    await page.goto(base + `#/example/${i}`);
+    await page.locator('.verdict').waitFor();
+  }
+  await page.goto(base + '#/');
+  await page.locator('.dlist').waitFor();
+  for (let i = 0; i < 3; i++) {
+    await page.locator('.del').first().click();
+    await page.click('#toast button');
+  }
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(() => window.loops()), 1, 'one loop rocks the home balance');
+  await page.locator('.dlist a').first().click();
+  await page.locator('.verdict').waitFor();
+  await page.waitForTimeout(500);
+  assert.equal(await page.evaluate(() => window.loops()), 0, 'no loop left running after home');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

@@ -211,6 +211,7 @@ function canSave() {
 // The little balance on the home screen, rocking gently.
 let idle = 0;
 function startIdle() {
+  stopIdle(); // home can be drawn again while it's showing (a delete, Undo): keep to one loop
   const holder = document.getElementById('heroScale');
   const left = { id: 'l', total: 0.62, parts: { a: 0.3, b: 0.2, c: 0.12 } };
   const right = { id: 'r', total: 0.55, parts: { a: 0.14, b: 0.16, d: 0.25 } };
