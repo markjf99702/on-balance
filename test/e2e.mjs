@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
+import { pack } from '../js/share.js';
 
 const require = createRequire(import.meta.url);
 let pw;
@@ -223,6 +224,15 @@ await mark.ctx.setOffline(true);
 await page.reload();
 assert.match(await text(page), /Your decisions/, 'loads offline');
 await mark.ctx.setOffline(false);
+
+// ---------- A link that isn't one of ours ----------
+// Ids from a link go into the page's markup as they are, so a link with ids the app didn't make is turned away.
+{
+  const { ctx, page } = await device();
+  await page.goto(base + '#/join/' + pack({ v: 1, id: 'probe', t: 'Probe', f: 'Tester', o: [['void(0)//', 'One'], ['p2', 'Two']], c: [['q" onclick=', 'Cost', 0]] }));
+  await page.locator('text=didn’t come through whole').waitFor({ timeout: 5000 });
+  await ctx.close();
+}
 
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();

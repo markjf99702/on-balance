@@ -31,6 +31,16 @@ export function unpack(text) {
 const clean = (s, max = 80) => String(s ?? '').slice(0, max);
 const score = s => (Number.isInteger(s) && s >= 0 && s <= 5 ? s : undefined);
 
+// The ids the app makes are a few letters and digits. They go into the page's markup as they are,
+// so a link with any other kind of id isn't one of ours, and is turned away.
+export const ID = /^[0-9a-z]{1,12}$/i;
+function ids(list) {
+  if (!list.every(x => Array.isArray(x) && typeof x[0] === 'string' && ID.test(x[0]))) throw new Error('not our ids');
+  const out = list.map(x => x[0]);
+  if (new Set(out).size !== out.length) throw new Error('not our ids');
+  return out;
+}
+
 export function joinLink(decision, from) {
   return `${base()}#/join/${pack({
     v: 1,
@@ -44,13 +54,16 @@ export function joinLink(decision, from) {
 
 export function readJoin(data) {
   const p = unpack(data);
-  if (p.v !== 1 || !Array.isArray(p.o) || !Array.isArray(p.c)) throw new Error('not a decision');
+  if (p.v !== 1 || !Array.isArray(p.o) || !Array.isArray(p.c) || typeof p.id !== 'string' || !ID.test(p.id)) throw new Error('not a decision');
+  const o = p.o.slice(0, 8), c = p.c.slice(0, 8);
+  const oids = ids(o), cids = ids(c);
+  if (oids.some(id => cids.includes(id))) throw new Error('not our ids');
   return {
-    id: clean(p.id, 20),
+    id: p.id,
     title: clean(p.t, 120),
     from: clean(p.f, 40),
-    options: p.o.slice(0, 8).map(([id, name]) => ({ id: clean(id, 12), name: clean(name) })),
-    criteria: p.c.slice(0, 8).map(([id, name, color], i) => ({ id: clean(id, 12), name: clean(name), color: Number.isInteger(color) && color >= 0 && color < 8 ? color : i })),
+    options: o.map(([, name], i) => ({ id: oids[i], name: clean(name) })),
+    criteria: c.map(([, name, color], i) => ({ id: cids[i], name: clean(name), color: Number.isInteger(color) && color >= 0 && color < 8 ? color : i })),
   };
 }
 

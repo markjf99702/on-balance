@@ -187,3 +187,21 @@ test('links carry a decision there and answers back', () => {
   assert.equal(M.addVoice(d, { ...a, name: 'robin' }), true);
   assert.equal(d.others.filter(o => o.name.toLowerCase() === 'robin').length, 1);
 });
+
+test('a link brings only ids the app makes, since ids go into the page as they are', () => {
+  const link = { v: 1, id: 'k3x9q', t: 'Dinner', f: 'Mark', o: [['a1', 'Pizza'], ['p2', 'Curry']], c: [['b1', 'Taste', 0]] };
+  const j = readJoin(pack(link));
+  assert.deepEqual(j.options.map(o => o.id), ['a1', 'p2']);
+  assert.equal(j.id, 'k3x9q');
+  const odd = [
+    { o: [['void(0)//', 'Pizza'], ['p2', 'Curry']] },
+    { c: [['q" onclick=', 'Taste', 0]] },
+    { o: [['', 'Pizza'], ['p2', 'Curry']] },
+    { o: [[7, 'Pizza'], ['p2', 'Curry']] },
+    { o: ['ab', ['p2', 'Curry']] },
+    { o: [['a1', 'Pizza'], ['a1', 'Curry']] },
+    { c: [['a1', 'Taste', 0]] },
+    { id: '"><b>' },
+  ];
+  for (const change of odd) assert.throws(() => readJoin(pack({ ...link, ...change })), `turns away ${JSON.stringify(change)}`);
+});
