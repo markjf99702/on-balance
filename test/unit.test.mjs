@@ -269,3 +269,25 @@ test('the list is done once two choices and one thing that matters have names', 
   d.options[1].name = 'Coffee';
   assert.equal(M.progress(d, d.me).listed, true);
 });
+
+test('answers that go round a bigger circle are noticed too, the smallest circle first', () => {
+  const ids = ['cost', 'space', 'risk', 'looks'];
+  // The first four questions: Cost over Space, Looks over Risk, Risk over Cost, Space over Looks. No three go round.
+  const p = {};
+  M.setPair(p, 'cost', 'space', 1);
+  M.setPair(p, 'looks', 'risk', 1);
+  M.setPair(p, 'risk', 'cost', 2);
+  M.setPair(p, 'space', 'looks', 1);
+  assert.deepEqual(M.circles(ids, p)[0], ['cost', 'space', 'looks', 'risk']);
+  // The other two the same: still a circle.
+  M.setPair(p, 'cost', 'looks', 0);
+  M.setPair(p, 'space', 'risk', 0);
+  assert.deepEqual(M.circles(ids, p)[0], ['cost', 'space', 'looks', 'risk']);
+  // Space over Risk makes a circle of three as well, which comes first.
+  M.setPair(p, 'space', 'risk', 1);
+  assert.equal(M.circles(ids, p)[0].length, 3);
+  // Answers that line up don't go round.
+  const line = {};
+  for (const [a, b] of [['cost', 'space'], ['space', 'risk'], ['risk', 'looks'], ['cost', 'looks']]) M.setPair(line, a, b, 1);
+  assert.deepEqual(M.circles(ids, line), []);
+});

@@ -131,19 +131,30 @@ export function voiceWeights(criteria, voice) {
   return voice?.mode === 'manual' ? manualWeights(ids, voice.manual) : weightsFromPairs(ids, voice?.pairs || {});
 }
 
-// Answers that go round in a circle: a over b, b over c, but c over a.
+// Answers that go round in a circle: a over b, b over c, but c over a, or round more of them
+// (a over b, b over c, c over d, but d over a). Each circle once, the smallest first.
 export function circles(ids, pairs) {
-  const out = [];
+  const out = [], seen = new Set();
   const over = (a, b) => (getPair(pairs, a, b) ?? 0) > 0;
-  for (let i = 0; i < ids.length; i++) {
-    for (let j = 0; j < ids.length; j++) {
-      for (let k = 0; k < ids.length; k++) {
-        const [a, b, c] = [ids[i], ids[j], ids[k]];
-        if (i < j && i < k && j !== k && over(a, b) && over(b, c) && over(c, a)) out.push([a, b, c]);
+  for (const start of ids) {
+    // The shortest way round from start back to it, one "over" answer at a time.
+    const from = new Map([[start, null]]);
+    let ring = [start], last = null;
+    while (ring.length && !last) {
+      const next = [];
+      for (const a of ring) {
+        if (over(a, start) && a !== start) { last = a; break; }
+        for (const b of ids) if (over(a, b) && !from.has(b)) { from.set(b, a); next.push(b); }
       }
+      ring = next;
     }
+    if (!last) continue;
+    const circle = [];
+    for (let x = last; x !== null; x = from.get(x)) circle.unshift(x);
+    const key = [...circle].sort().join('|');
+    if (!seen.has(key)) { seen.add(key); out.push(circle); }
   }
-  return out;
+  return out.sort((a, b) => a.length - b.length);
 }
 
 // How far along one voice is.

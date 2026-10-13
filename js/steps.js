@@ -251,7 +251,7 @@ export function weigh(d) {
     <div class="card">
       <h2>How much each thing counts</h2>
       ${weightBars(d, w)}
-      ${circle ? `<p class="notice">Some answers go round in a circle: <b>${esc(crit[circle[0]].name)}</b> over <b>${esc(crit[circle[1]].name)}</b>, <b>${esc(crit[circle[1]].name)}</b> over <b>${esc(crit[circle[2]].name)}</b>, but <b>${esc(crit[circle[2]].name)}</b> over <b>${esc(crit[circle[0]].name)}</b>. The weights still work, but it’s worth another look.</p>` : ''}
+      ${circle ? `<p class="notice">Some answers go round in a circle: ${roundWords(circle, crit)}. The weights still work, but it’s worth another look.</p>` : ''}
     </div>
     <div class="card">
       <h2>Your answers</h2>
@@ -288,6 +288,13 @@ export function weigh(d) {
       }
     },
   });
+}
+
+// "A over B, B over C, but C over A", however many go round.
+function roundWords(circle, crit) {
+  const b = id => `<b>${esc(crit[id].name)}</b>`;
+  const links = circle.map((id, i) => `${b(id)} over ${b(circle[(i + 1) % circle.length])}`);
+  return `${links.slice(0, -1).join(', ')}, but ${links[links.length - 1]}`;
 }
 
 export function weightBars(d, w) {

@@ -448,6 +448,27 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Answers that go round a circle of four ----------
+{
+  const { ctx, page } = await device();
+  await page.goto(base);
+  const id = await page.evaluate(() => {
+    const { store, M } = window.onBalance;
+    const d = M.blankDecision();
+    d.title = 'Which flat?';
+    d.options = [{ id: 'o1', name: 'Top floor' }, { id: 'o2', name: 'Garden flat' }];
+    d.criteria = ['Cost', 'Space', 'Risk', 'Looks'].map((name, i) => ({ id: `c${i}`, name, color: i }));
+    for (const [a, b] of [['c0', 'c1'], ['c3', 'c2'], ['c2', 'c0'], ['c1', 'c3']]) M.setPair(d.me.pairs, a, b, 1);
+    d.me.enough = true; // Skip the rest
+    store.put(d);
+    return d.id;
+  });
+  await page.goto(base + `#/d/${id}/weigh`);
+  await page.locator('.notice').waitFor({ timeout: 5000 });
+  assert.match(await page.locator('.notice').innerText(), /in a circle: Cost over Space, Space over Looks, Looks over Risk, but Risk over Cost\./);
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();
