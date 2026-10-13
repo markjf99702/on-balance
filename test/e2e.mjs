@@ -421,6 +421,17 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Without JavaScript ----------
+// The page says what it needs, in the page, above the footer.
+{
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, javaScriptEnabled: false });
+  const page = await ctx.newPage();
+  await page.goto(base);
+  const [said, foot] = [await page.locator('.noscript').boundingBox(), await page.locator('.jd-foot').boundingBox()];
+  assert.ok(said.y + said.height <= foot.y, 'the message comes before the footer');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();
