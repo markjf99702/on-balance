@@ -294,6 +294,38 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- A quick second tap on ✕ ----------
+// Once the first row has gone, a second tap lands on the next row's ✕: one Undo brings both back.
+{
+  const { ctx, page } = await device();
+  for (const i of [0, 1, 2]) {
+    await page.goto(base + `#/example/${i}`);
+    await page.locator('.verdict').waitFor();
+  }
+  await page.goto(base + '#/');
+  await page.locator('.dlist').waitFor();
+  await page.locator('.del').first().tap();
+  await page.locator('.del').first().tap();
+  assert.equal(await page.locator('.dlist li').count(), 1);
+  assert.match(await page.locator('#toast').innerText(), /Deleted 2 decisions/);
+  await page.click('#toast button');
+  assert.equal(await page.locator('.dlist li').count(), 3, 'one Undo brings both decisions back');
+  // The same for other people's answers on a result.
+  await page.click('.dlist a:has-text("Which apartment")');
+  await page.locator('.verdict').waitFor();
+  const id = await page.evaluate(() => location.hash.split('/')[2]);
+  const d = await page.evaluate(id => window.onBalance.store.get(id), id);
+  const threes = Object.fromEntries(d.criteria.map(c => [c.id, Object.fromEntries(d.options.map(o => [o.id, 3]))]));
+  await page.goto(base + '#/answer/' + pack({ v: 1, id, n: 'Robin', m: 'pairs', p: {}, h: {}, s: threes }));
+  await page.locator('.people li:has-text("Robin")').waitFor();
+  await page.locator('.people .x').first().tap();
+  await page.locator('.people .x').first().tap();
+  assert.match(await page.locator('#toast').innerText(), /Removed Sam’s and Robin’s answers/);
+  await page.click('#toast button');
+  assert.equal(await page.locator('.people li').count(), 2, 'one Undo brings both people’s answers back');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

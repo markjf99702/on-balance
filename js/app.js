@@ -4,7 +4,7 @@ import { store } from './store.js';
 import { readJoin, readAnswer } from './share.js';
 import { makeExample, exampleTitles } from './examples.js';
 import { scaleSVG, setTilt } from './scale.js';
-import { app, esc, ui, on, go, toast, day, names } from './ui.js';
+import { app, esc, ui, on, go, toast, toastAction, day, names } from './ui.js';
 import { list, weigh, score } from './steps.js';
 import { result } from './result.js';
 
@@ -175,7 +175,9 @@ function home(tidy = true) {
         const d = store.get(t.dataset.del);
         store.remove(d.id);
         home();
-        toast(`Deleted “${d.title || 'Untitled decision'}”`, { label: 'Undo', run: () => { store.put(d); home(); } });
+        const deleted = [...(toastAction()?.deleted || []), d];
+        const what = deleted.length > 1 ? `${deleted.length} decisions` : `“${d.title || 'Untitled decision'}”`;
+        toast(`Deleted ${what}`, { label: 'Undo', deleted, run: () => { deleted.forEach(x => store.put(x)); home(); } });
       } else if (t.dataset.act === 'save') {
         const url = URL.createObjectURL(new Blob([store.backup()], { type: 'application/json' }));
         const a = Object.assign(document.createElement('a'), { href: url, download: `on-balance-${new Date().toISOString().slice(0, 10)}.json` });

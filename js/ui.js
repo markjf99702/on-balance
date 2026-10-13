@@ -64,15 +64,19 @@ export function refresh(d, step, next) {
   }
 }
 
-let toastTimer;
+let toastTimer, showing = null;
 export function toast(message, action) {
   const el = document.getElementById('toast');
   el.innerHTML = `<span>${esc(message)}</span>${action ? `<button type="button">${esc(action.label)}</button>` : ''}`;
   el.hidden = false;
-  if (action) el.querySelector('button').onclick = () => { el.hidden = true; action.run(); };
+  showing = action || null;
+  if (action) el.querySelector('button').onclick = () => { el.hidden = true; showing = null; action.run(); };
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; }, action ? 6000 : 2600);
+  toastTimer = setTimeout(() => { el.hidden = true; showing = null; }, action ? 6000 : 2600);
 }
+// The action on the toast that's showing, if there is one: a second delete while it's up joins the first,
+// so one Undo brings both back (a quick second tap lands on the next row's ✕).
+export const toastAction = () => showing;
 
 // The sheet that slides up for sharing. bind() wires up what's inside once it's drawn.
 export function sheet(html, bind) {

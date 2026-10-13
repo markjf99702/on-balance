@@ -4,7 +4,7 @@ import * as M from './model.js';
 import { store } from './store.js';
 import { joinLink, answerLink } from './share.js';
 import { scaleSVG, setTilt, tiltFor } from './scale.js';
-import { esc, dot, tagged, pct, ui, frame, on, go, toast, sheet, copy, day, names, fromName } from './ui.js';
+import { esc, dot, tagged, pct, ui, frame, on, go, toast, toastAction, sheet, copy, day, names, fromName } from './ui.js';
 
 function notReady(d) {
   const p = M.progress(d, d.me);
@@ -208,7 +208,9 @@ export function result(d) {
         const [gone] = d.others.splice(Number(t.dataset.drop), 1);
         store.put(d);
         result(d);
-        toast(`Removed ${gone.name}’s answers`, { label: 'Undo', run: () => { d.others.push(gone); store.put(d); result(d); } });
+        const before = toastAction();
+        const removed = [...(before?.from === d.id ? before.removed : []), gone];
+        toast(`Removed ${listWords(removed.map(o => `${o.name}’s`))} answers`, { label: 'Undo', from: d.id, removed, run: () => { d.others.push(...removed); store.put(d); result(d); } });
         return;
       }
       const act = t.dataset.act;
