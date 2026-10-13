@@ -344,10 +344,10 @@ function merge(d) {
   const owner = store.get(d.shared.id);
   if (!owner) { toast('The original decision isn’t here any more.'); return; }
   const name = d.shared.name || 'Someone';
-  M.addVoice(owner, { name, ...d.me });
+  const replaced = M.addVoice(owner, { name, ...d.me });
   store.put(owner);
   store.remove(d.id);
   ui.voice[owner.id] = 'together';
   go(`/d/${owner.id}/result`, true);
-  toast(`Added ${name}’s answers`);
+  toast(replaced ? `Updated ${name}’s answers` : `Added ${name}’s answers`);
 }

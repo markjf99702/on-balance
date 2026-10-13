@@ -488,6 +488,30 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Passing the phone to the same person twice ----------
+// Their second answers replace the first, and the toast says so.
+{
+  const { ctx, page } = await device();
+  await page.goto(base + '#/example/1');
+  await page.locator('.verdict').waitFor();
+  const id = await page.evaluate(() => location.hash.split('/')[2]);
+  for (const said of ['Added', 'Updated']) {
+    const copyId = await page.evaluate(id => {
+      const { store, M } = window.onBalance;
+      const d = store.get(id), copy = M.blankDecision();
+      Object.assign(copy, { title: d.title, options: d.options.map(o => ({ ...o })), criteria: d.criteria.map(c => ({ ...c })), me: structuredClone(d.me) });
+      copy.shared = { id, from: 'Mark', local: true, name: 'Robin' };
+      store.put(copy);
+      return copy.id;
+    }, id);
+    await page.goto(base + `#/d/${copyId}/result`);
+    await page.click('[data-act="merge"]');
+    await page.locator(`#toast:has-text("${said} Robin’s answers")`).waitFor({ timeout: 5000 });
+  }
+  assert.equal(await page.evaluate(id => window.onBalance.store.get(id).others.length, id), 1);
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();
