@@ -18,6 +18,7 @@ const EXAMPLE_NOTES = [
 let lastPath = null;
 
 // tidy: false when another tab changed what's saved, and this one is only drawing its screen again.
+// Then it tidies nothing away: an empty decision or a blank row may be one the other tab is filling in.
 function route(tidy = true) {
   const path = location.hash.replace(/^#\/?/, '');
   const [head, a, b] = path.split('/');
@@ -46,7 +47,7 @@ function route(tidy = true) {
     const d = store.get(a);
     if (!d) return message('That decision isn’t here', 'It may have been deleted, or it was made on another device.');
     const step = STEPS[b] ? b : 'list';
-    if (step !== 'list' && M.progress(d, d.me).listed) prune(d);
+    if (tidy && step !== 'list' && M.progress(d, d.me).listed) prune(d);
     document.title = `${d.title || 'Untitled decision'} · On Balance`;
     return STEPS[step](d);
   }

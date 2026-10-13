@@ -282,6 +282,13 @@ await mark.ctx.setOffline(false);
   const saved = await b.evaluate(id => JSON.parse(localStorage.getItem('on-balance')).decisions.find(x => x.id === id), id);
   assert.deepEqual(saved.others.map(o => o.name), ['Sam'], 'deciding in the first tab kept Sam’s answers');
   assert.ok(saved.decided, 'and it’s decided');
+  // A choice added to the list in one tab stays there to be filled in while the other tab shows the result.
+  await b.goto(base + `#/d/${id}/list`);
+  await b.click('[data-add="option"]');
+  await b.waitForTimeout(300);
+  assert.equal(await b.locator('ul[data-kind=option] li').count(), 3, 'a choice added while the other tab shows the result stays');
+  assert.equal(await b.evaluate(() => document.activeElement.matches('ul[data-kind=option] li:last-child input')), true, 'with the focus in it');
+  await b.locator('ul[data-kind=option] li:last-child input').fill('Go freelance');
   // A decision started in one tab while the other sits on the home screen isn't tidied away or saved over.
   await a.goto(base + '#/');
   await a.locator('.dlist').waitFor();
