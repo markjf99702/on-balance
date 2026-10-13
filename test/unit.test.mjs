@@ -205,3 +205,30 @@ test('a link brings only ids the app makes, since ids go into the page as they a
   ];
   for (const change of odd) assert.throws(() => readJoin(pack({ ...link, ...change })), `turns away ${JSON.stringify(change)}`);
 });
+
+test('saved decisions come back as they were, and damaged ones are put right', () => {
+  // Anything the app saved comes through unchanged.
+  const saved = [makeExample(0), makeExample(1), makeExample(2), ...Array.from({ length: 40 }, (_, i) => randomDecision(i + 1))];
+  saved[3].shared = { id: 'k3x9q', from: 'Mark', name: 'Sam' };
+  saved[4].decided = { option: saved[4].options[0].id, at: 5 };
+  saved[5].me.enough = true;
+  for (const d of saved) assert.deepEqual(M.cleanDecision(structuredClone(d)), d);
+
+  // A damaged copy or a backup edited by hand: what the page needs is put right, and odd ids are left out.
+  for (const junk of [null, 5, 'x', [], {}, { id: '' }, { id: 7 }, { id: '"><b>' }]) assert.equal(M.cleanDecision(junk), null);
+  const d = M.cleanDecision({
+    id: 'h1',
+    options: [{ id: 'a', name: 'Bus' }, { id: 'b' }, { id: 'x" onclick="', name: 'Odd' }, null, { id: 'a', name: 'Again' }],
+    criteria: [{ id: 'c', name: 'Cost', color: '0" onclick="' }, { id: 'e', name: 'Ease', color: 0 }],
+    me: 5,
+    others: [null, { name: 4, scores: [] }],
+    shared: 'x',
+  });
+  assert.equal(d.title, '');
+  assert.deepEqual(d.options, [{ id: 'a', name: 'Bus' }, { id: 'b', name: '' }]);
+  assert.deepEqual(d.criteria.map(c => c.color), [1, 0]);
+  assert.deepEqual(d.me, { pairs: {}, manual: {}, scores: {}, mode: 'pairs' });
+  assert.deepEqual(d.others.map(o => [o.name, o.scores]), [['Someone', {}]]);
+  assert.equal(d.shared, null);
+  assert.equal(M.ranking(d, M.viewOf(d, d.me)).length, 2);
+});

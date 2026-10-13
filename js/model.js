@@ -332,6 +332,45 @@ export function newId(taken = []) {
   return id;
 }
 
+// Ids are a few letters and digits, the kind newId makes (and a1, b1 for a new decision's first rows).
+// They go into the page's markup as they are, so nothing else is let in from a link, a backup or storage.
+export const ID = /^[0-9a-z]{1,12}$/i;
+
+const isObject = x => x !== null && typeof x === 'object' && !Array.isArray(x);
+
+// A saved decision put right for the page: the same object, with anything of the wrong kind
+// (from a damaged copy or a backup edited by hand) set back to empty, rows without a proper id left out,
+// and null if it has no proper id itself. A decision the app saved comes through unchanged.
+export function cleanDecision(d) {
+  if (!isObject(d) || typeof d.id !== 'string' || !ID.test(d.id)) return null;
+  if (typeof d.title !== 'string') d.title = '';
+  const seen = new Set();
+  const rows = list => (Array.isArray(list) ? list : []).filter(x => {
+    if (!isObject(x) || typeof x.id !== 'string' || !ID.test(x.id) || seen.has(x.id)) return false;
+    seen.add(x.id);
+    if (typeof x.name !== 'string') x.name = '';
+    return true;
+  });
+  d.options = rows(d.options);
+  d.criteria = rows(d.criteria);
+  const colored = c => Number.isInteger(c.color) && c.color >= 0 && c.color < MAX_CRITERIA;
+  for (const c of d.criteria) if (!colored(c)) c.color = nextColor(d.criteria.filter(x => x !== c && colored(x)));
+  d.me = cleanVoice(d.me);
+  d.others = (Array.isArray(d.others) ? d.others : []).filter(isObject).map(cleanVoice);
+  for (const o of d.others) if (typeof o.name !== 'string' || !o.name.trim()) o.name = 'Someone';
+  if (!isObject(d.shared)) d.shared = null;
+  if (typeof d.updated !== 'number') d.updated = 0;
+  return d;
+}
+
+function cleanVoice(v) {
+  if (!isObject(v)) v = {};
+  for (const key of ['pairs', 'manual', 'scores']) if (!isObject(v[key])) v[key] = {};
+  for (const [cid, row] of Object.entries(v.scores)) if (!isObject(row)) delete v.scores[cid];
+  if (v.mode !== 'manual') v.mode = 'pairs';
+  return v;
+}
+
 export function nextColor(criteria) {
   const used = new Set(criteria.map(c => c.color));
   for (let i = 0; i < MAX_CRITERIA; i++) if (!used.has(i)) return i;

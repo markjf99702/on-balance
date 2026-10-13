@@ -3,6 +3,7 @@
 //
 //   #/join/<data>    the choices and what matters, so someone else can weigh and score them their way
 //   #/answer/<data>  their answers, to add to the original decision
+import { ID } from './model.js';
 
 export const SITE = 'https://junkdrawer.works/on-balance/';
 
@@ -31,9 +32,8 @@ export function unpack(text) {
 const clean = (s, max = 80) => String(s ?? '').slice(0, max);
 const score = s => (Number.isInteger(s) && s >= 0 && s <= 5 ? s : undefined);
 
-// The ids the app makes are a few letters and digits. They go into the page's markup as they are,
+// The ids the app makes are a few letters and digits (ID). They go into the page's markup as they are,
 // so a link with any other kind of id isn't one of ours, and is turned away.
-export const ID = /^[0-9a-z]{1,12}$/i;
 function ids(list) {
   if (!list.every(x => Array.isArray(x) && typeof x[0] === 'string' && ID.test(x[0]))) throw new Error('not our ids');
   const out = list.map(x => x[0]);

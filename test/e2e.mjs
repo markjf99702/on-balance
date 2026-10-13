@@ -234,6 +234,29 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- A damaged copy, or a backup edited by hand ----------
+// Neither may leave the home screen blank.
+{
+  const { ctx, page } = await device();
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('seeded')) return;
+    sessionStorage.setItem('seeded', '1');
+    const busOrBike = { id: 'x2', title: 'Bus or bike', options: [{ id: 'a', name: 'Bus' }, { id: 'b', name: 'Bike' }], criteria: [{ id: 'c' }], me: null };
+    localStorage.setItem('on-balance', JSON.stringify({ decisions: [null, { id: 'x1' }, busOrBike] }));
+  });
+  await page.goto(base);
+  await page.locator('.dlist').waitFor({ timeout: 5000 });
+  assert.match(await page.locator('.dlist').innerText(), /Bus or bike/);
+  // A backup whose decision has lost its title.
+  const edited = { app: 'on-balance', version: 1, decisions: [{ id: 'h1', options: [{ id: 'a', name: 'Walk' }, { id: 'b', name: 'Drive' }], criteria: [{ id: 'c', name: 'Cost', color: 0 }], me: { pairs: {}, mode: 'pairs', manual: {}, scores: { c: { a: 3, b: 4 } } }, updated: 5 }] };
+  await page.locator('#loadBackup').setInputFiles({ name: 'edited.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(edited)) });
+  await page.locator('#toast:has-text("Loaded 1 decision")').waitFor({ timeout: 5000 });
+  await page.reload();
+  await page.locator('.dlist').waitFor({ timeout: 5000 });
+  assert.equal(await page.locator('.dlist li').count(), 2, 'both decisions after a reload');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

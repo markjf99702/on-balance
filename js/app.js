@@ -185,13 +185,14 @@ function home() {
     },
     async change(e) {
       if (e.target.id !== 'loadBackup' || !e.target.files[0]) return;
+      let n;
       try {
-        const n = store.restore(await e.target.files[0].text());
-        home();
-        toast(n ? `Loaded ${n} decision${n === 1 ? '' : 's'}` : 'Nothing new in that backup');
+        n = store.restore(await e.target.files[0].text());
       } catch (err) {
-        toast(err.message.startsWith('That file') ? err.message : 'That file isn’t an On Balance backup.');
+        return toast(err.message.startsWith('That file') ? err.message : 'That file isn’t an On Balance backup.');
       }
+      home();
+      toast(n ? `Loaded ${n} decision${n === 1 ? '' : 's'}` : 'Nothing new in that backup');
     },
   });
 }

@@ -1,11 +1,17 @@
 // Saves decisions in this browser. Nothing leaves the device unless you share a link or save a backup.
+import { cleanDecision } from './model.js';
 
 const KEY = 'on-balance';
 
 function read() {
   try {
     const data = JSON.parse(localStorage.getItem(KEY));
-    if (data && Array.isArray(data.decisions)) return data;
+    if (data && Array.isArray(data.decisions)) {
+      // A damaged copy mustn't leave the page blank: put right what can be, and leave out what can't.
+      data.decisions = data.decisions.map(cleanDecision).filter(Boolean);
+      if (typeof data.name !== 'string') data.name = '';
+      return data;
+    }
   } catch { /* private window, blocked storage or bad data: start empty */ }
   return { decisions: [], name: '' };
 }
@@ -39,12 +45,11 @@ export const store = {
     if (data?.app !== 'on-balance' || !Array.isArray(data.decisions)) throw new Error('That file isn’t an On Balance backup.');
     let added = 0;
     for (const d of data.decisions) {
-      if (!d?.id || !Array.isArray(d.options) || !Array.isArray(d.criteria) || !d.me) continue;
-      d.others ||= [];
+      if (!d?.id || !Array.isArray(d.options) || !Array.isArray(d.criteria) || !d.me || !cleanDecision(d)) continue;
       const mine = state.decisions.find(x => x.id === d.id);
       if (!mine) { state.decisions.push(d); added++; } else if ((d.updated || 0) > (mine.updated || 0)) { Object.assign(mine, d); added++; }
     }
-    if (!state.name && data.name) state.name = data.name;
+    if (!state.name && typeof data.name === 'string') state.name = data.name.slice(0, 40);
     write();
     return added;
   },
