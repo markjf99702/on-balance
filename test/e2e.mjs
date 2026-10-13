@@ -432,6 +432,22 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- The next step's button on a phone ----------
+// Its arrow stays with the words while the note beside it wraps.
+{
+  const { ctx, page } = await device();
+  await page.goto(base + '#/new');
+  await page.locator('#title').waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  const lines = await page.locator('.next-bar .btn.primary').evaluate(el => {
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    return new Set([...r.getClientRects()].map(x => Math.round(x.top))).size;
+  });
+  assert.equal(lines, 1, 'Next: weigh them → is on one line');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

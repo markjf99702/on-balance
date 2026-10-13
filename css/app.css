@@ -180,7 +180,7 @@ main { max-width: 720px; margin: 0 auto; padding: 18px 16px 120px; outline: none
   background: linear-gradient(to top, var(--bg) 70%, color-mix(in srgb, var(--bg) 0%, transparent));
   display: flex; align-items: center; gap: 12px;
 }
-.next-bar .btn.primary { margin-left: auto; }
+.next-bar .btn.primary { margin-left: auto; white-space: nowrap; }
 .next-bar .note { color: var(--muted); font-size: .9rem; line-height: 1.3; }
 
 /* List step */
