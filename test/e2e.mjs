@@ -537,6 +537,28 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- A weight that needs to move less than a point ----------
+// Hassle counts for 26.5%, and 27% would tip it: the page mustn't say "27% instead of 27%".
+{
+  const { ctx, page } = await device();
+  await page.goto(base);
+  const id = await page.evaluate(() => {
+    const { store, M } = window.onBalance;
+    const d = M.blankDecision();
+    d.title = 'Getting to work';
+    d.options = ['Bus pass', 'Bike', 'Car share', 'Walk', 'Scooter'].map((name, i) => ({ id: `o${i}`, name }));
+    d.criteria = ['Cost', 'Time', 'Weather', 'Exercise', 'Hassle'].map((name, i) => ({ id: `c${i}`, name, color: i }));
+    d.me.pairs = { 'c0|c1': -1, 'c2|c3': -2, 'c0|c4': 0, 'c1|c2': 2, 'c3|c4': -2, 'c0|c2': 0, 'c1|c3': 1, 'c1|c4': 1, 'c0|c3': -1, 'c2|c4': -2 };
+    d.me.scores = { c0: { o0: 3, o1: 3, o2: 3, o3: 1, o4: 5 }, c1: { o0: 5, o1: 2, o2: 2, o3: 3, o4: 2 }, c2: { o0: 1, o1: 4, o2: 5, o3: 1, o4: 4 }, c3: { o0: 1, o1: 2, o2: 2, o3: 4, o4: 4 }, c4: { o0: 2, o1: 2, o2: 5, o3: 4, o4: 3 } };
+    store.put(d);
+    return d.id;
+  });
+  await page.goto(base + `#/d/${id}/result`);
+  await page.locator('.flip-list').waitFor();
+  assert.match(await page.locator('.flip-list').innerText(), /Car share would come out ahead if Hassle counted for 27% instead of 26\.5%\./);
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

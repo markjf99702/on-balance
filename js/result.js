@@ -11,6 +11,16 @@ function listWords(items, and = 'and') {
 }
 const orWords = items => listWords(items, 'or');
 
+// What something counts for now, with a decimal or two when it takes them to tell it apart from
+// the whole percent suggested: "27% instead of 26.5%", not "27% instead of 27%".
+function nowPct(from, to) {
+  for (let places = 0; places <= 2; places++) {
+    const shown = places ? (from * 100).toFixed(places) : String(Math.round(from * 100));
+    if (Number(shown) !== to) return `${shown}%`;
+  }
+  return `${(from * 100).toFixed(3)}%`;
+}
+
 export function result(d) {
   const p = M.progress(d, d.me);
   if (!p.complete) return notReady(d, 'result');
@@ -78,8 +88,8 @@ export function result(d) {
           const c = crit[f.weight.criterion];
           const { to } = f.weight;
           items.push(to <= 0
-            ? `${esc(n[R.id])} would come out ahead if ${tagged(c)} didn’t count at all. It counts for ${pct(f.weight.from)} now.`
-            : `${esc(n[R.id])} would come out ahead if ${tagged(c)} counted for ${to}% instead of ${pct(f.weight.from)}.`);
+            ? `${esc(n[R.id])} would come out ahead if ${tagged(c)} didn’t count at all. It counts for ${nowPct(f.weight.from, 0)} now.`
+            : `${esc(n[R.id])} would come out ahead if ${tagged(c)} counted for ${to}% instead of ${nowPct(f.weight.from, to)}.`);
         }
         if (f.score) {
           const c = crit[f.score.criterion];
