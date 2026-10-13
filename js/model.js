@@ -264,11 +264,11 @@ export function flips(decision, view, winner, runner, withScores = true) {
   for (const c of decision.criteria) {
     const w = view.w[c.id];
     const gap = view.u[runner.id][c.id] - view.u[winner.id][c.id]; // > 0: the runner-up is better on this
-    if (!w || w > 0.999 || !gap) continue; // with only one thing that matters, its weight can't change anything
-    const k = 1 + D / (w * gap); // multiply this weight by k (the others stay put, then all rescale)
-    if (k < 0) continue; // it would have to count for less than nothing
-    const at = (k * w) / (1 + (k - 1) * w); // the share where the two draw level
-    if (!(at < 0.995) || at < 1e-9) continue; // at 0 they'd only draw level
+    if (w > 0.999 || !gap) continue; // with only one thing that matters, its weight can't change anything
+    // The share where the two draw level, the others keeping their proportions. It holds for something that
+    // counts for nothing yet, too. Past 100% or below 0 means no share of it would do; at 0 they'd only draw level.
+    const at = (D + w * gap) / (D + gap);
+    if (!(at < 0.995) || at < 1e-9) continue;
     const change = Math.abs(at - w);
     // The whole percent to show: the first one past the point where they draw level.
     const to = gap > 0 ? Math.floor(at * 100 + 1e-6) + 1 : Math.max(0, Math.ceil(at * 100 - 1e-6) - 1);

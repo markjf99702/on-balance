@@ -84,40 +84,64 @@ function randomDecision(seed) {
   return d;
 }
 
+// The same, with the weights set by hand instead, some of them at 0.
+function handWeighted(seed) {
+  const d = randomDecision(seed);
+  const rand = M.mulberry32(seed + 1e6);
+  d.me.mode = 'manual';
+  for (const c of d.criteria) d.me.manual[c.id] = rand() < 0.3 ? 0 : Math.floor(rand() * 11);
+  return d;
+}
+
 test('what would change it really does change it', () => {
-  let weights = 0, scores = 0;
+  let weights = 0, scores = 0, fromNothing = 0;
   for (let seed = 1; seed <= 3000; seed++) {
-    const d = randomDecision(seed);
-    const view = M.viewOf(d, d.me);
-    const [W, R] = M.ranking(d, view);
-    const f = M.flips(d, view, W, R);
-    if (f.tie) continue;
-    if (f.weight) {
-      // Set the weight to the whole percent the page shows, and the runner-up must come out ahead.
-      const to = f.weight.to / 100;
-      const w = { ...view.w };
-      const rest = 1 - w[f.weight.criterion];
-      for (const id in w) w[id] = id === f.weight.criterion ? to : (w[id] / rest) * (1 - to);
-      const t = Object.fromEntries(M.ranking(d, { ...view, w }).map(r => [r.id, r.total]));
-      assert.ok(t[R.id] > t[W.id], `seed ${seed}: weight change puts the runner-up ahead of the winner`);
-      weights++;
-    }
-    if (f.score) {
-      const copy = structuredClone(d);
-      copy.me.scores[f.score.criterion][f.score.option] = f.score.to;
-      const again = M.ranking(copy, M.viewOf(copy, copy.me));
-      assert.ok(again.findIndex(r => r.id === R.id) < again.findIndex(r => r.id === W.id), `seed ${seed}: score change puts the runner-up ahead of the winner`);
-      // And it's the smallest: one point less wouldn't do it.
-      const less = structuredClone(d);
-      less.me.scores[f.score.criterion][f.score.option] = f.score.to + (f.score.to > f.score.from ? -1 : 1);
-      if (less.me.scores[f.score.criterion][f.score.option] !== f.score.from) {
-        const t = Object.fromEntries(M.ranking(less, M.viewOf(less, less.me)).map(r => [r.id, r.total]));
-        assert.ok(t[R.id] <= t[W.id] + 1e-9, `seed ${seed}: one point less is not enough`);
+    for (const d of [randomDecision(seed), handWeighted(seed)]) {
+      const view = M.viewOf(d, d.me);
+      const [W, R] = M.ranking(d, view);
+      const f = M.flips(d, view, W, R);
+      if (f.tie) continue;
+      if (f.weight) {
+        // Set the weight to the whole percent the page shows, and the runner-up must come out ahead.
+        const to = f.weight.to / 100;
+        const w = { ...view.w };
+        const rest = 1 - w[f.weight.criterion];
+        for (const id in w) w[id] = id === f.weight.criterion ? to : (w[id] / rest) * (1 - to);
+        const t = Object.fromEntries(M.ranking(d, { ...view, w }).map(r => [r.id, r.total]));
+        assert.ok(t[R.id] > t[W.id], `seed ${seed}: weight change puts the runner-up ahead of the winner`);
+        weights++;
+        if (!view.w[f.weight.criterion]) fromNothing++;
       }
-      scores++;
+      if (f.score) {
+        const copy = structuredClone(d);
+        copy.me.scores[f.score.criterion][f.score.option] = f.score.to;
+        const again = M.ranking(copy, M.viewOf(copy, copy.me));
+        assert.ok(again.findIndex(r => r.id === R.id) < again.findIndex(r => r.id === W.id), `seed ${seed}: score change puts the runner-up ahead of the winner`);
+        // And it's the smallest: one point less wouldn't do it.
+        const less = structuredClone(d);
+        less.me.scores[f.score.criterion][f.score.option] = f.score.to + (f.score.to > f.score.from ? -1 : 1);
+        if (less.me.scores[f.score.criterion][f.score.option] !== f.score.from) {
+          const t = Object.fromEntries(M.ranking(less, M.viewOf(less, less.me)).map(r => [r.id, r.total]));
+          assert.ok(t[R.id] <= t[W.id] + 1e-9, `seed ${seed}: one point less is not enough`);
+        }
+        scores++;
+      }
     }
   }
-  assert.ok(weights > 100 && scores > 100, `checked ${weights} weight changes and ${scores} score changes`);
+  assert.ok(weights > 100 && scores > 100 && fromNothing > 10, `checked ${weights} weight changes (${fromNothing} for something that counted for nothing) and ${scores} score changes`);
+});
+
+test('what would change it can give weight to something that counts for nothing', () => {
+  // Weights by hand: Price 5, Carrying the kids 0. The cargo bike wins if the kids count for 51%.
+  const d = M.blankDecision();
+  d.options = [{ id: 'a', name: 'Road bike' }, { id: 'b', name: 'Cargo bike' }];
+  d.criteria = [{ id: 'p', name: 'Price', color: 0 }, { id: 'k', name: 'Carrying the kids', color: 1 }];
+  Object.assign(d.me, { mode: 'manual', manual: { p: 5, k: 0 }, scores: { p: { a: 5, b: 1 }, k: { a: 1, b: 5 } } });
+  const view = M.viewOf(d, d.me);
+  const [W, R] = M.ranking(d, view);
+  assert.equal(W.id, 'a');
+  const f = M.flips(d, view, W, R);
+  assert.deepEqual([f.weight?.criterion, f.weight?.to], ['k', 51]);
 });
 
 test('steadiness adds up and repeats for the same seed', () => {
