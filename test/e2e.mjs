@@ -760,6 +760,73 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Answers and scores from the keyboard ----------
+// Each set of answers or scores is one Tab stop, and the arrow keys move along it and choose, as radio buttons do.
+{
+  const { ctx, page } = await device();
+  const example = async () => {
+    await page.goto(base + '#/example/0');
+    await page.locator('.verdict').waitFor();
+    return page.evaluate(() => location.hash.split('/')[2]);
+  };
+  const saved = id => page.evaluate(id => window.onBalance.store.get(id).me, id);
+  const firstAnswer = id => page.evaluate(id => { const { store, M } = window.onBalance; const d = store.get(id); return M.getPair(d.me.pairs, ...M.pairSchedule(d.criteria.map(c => c.id))[0]); }, id);
+  const focused = sel => page.evaluate(sel => !!document.activeElement?.matches(sel), sel);
+  const stops = sel => page.locator(sel).evaluateAll(sets => sets.map(s => [...s.querySelectorAll('[role=radio]')].filter(b => b.tabIndex === 0).length));
+  const tabFromSteps = async () => { await page.locator('.steps a').last().focus(); await page.keyboard.press('Tab'); };
+
+  // A question on Weigh: the arrows choose without moving on; Enter goes on, as a tap does.
+  const id = await example();
+  await page.evaluate(id => { const { store } = window.onBalance; const d = store.get(id); d.me.pairs = {}; store.put(d); }, id);
+  await page.goto(base + `#/d/${id}/weigh`);
+  await page.locator('.ask').waitFor();
+  assert.deepEqual(await stops('.five'), [1], 'the five answers are one Tab stop');
+  await tabFromSteps();
+  assert.ok(await focused('.five button[data-v="2"]'), 'Tab goes to the first answer when none is chosen');
+  await page.keyboard.press('Tab');
+  assert.equal(await focused('.five button'), false, 'the next Tab leaves the answers');
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('ArrowRight');
+  assert.ok(await focused('.five button[data-v="1"][aria-checked="true"]'), 'ArrowRight moves on and chooses');
+  assert.equal(await firstAnswer(id), 1, 'and saves the answer');
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('ArrowLeft');
+  assert.ok(await focused('.five button[data-v="-2"][aria-checked="true"]'), 'ArrowLeft goes round from the first to the last');
+  await page.waitForTimeout(500);
+  assert.match(await page.locator('.ask-top span').innerText(), /^1 of 10$/, 'choosing with the arrows stays on the question');
+  await page.keyboard.press('Enter');
+  await page.locator('.ask-top span:has-text("2 of 10")').waitFor({ timeout: 5000 });
+  assert.deepEqual([await firstAnswer(id), Object.keys((await saved(id)).pairs).length], [-2, 1], 'with that answer');
+
+  // Score: one Tab stop for each choice's scores.
+  await page.goto(base + `#/d/${id}/score`);
+  await page.locator('.pick').first().waitFor();
+  assert.ok((await stops('.pick')).every(n => n === 1), 'each set of scores is one Tab stop');
+  const [rent, maple, birch] = await page.locator('.pick').evaluateAll(p => [p[0].dataset.c, p[0].dataset.o, p[1].dataset.o]);
+  await tabFromSteps();
+  assert.ok(await focused(`.pick[data-o="${maple}"] button[data-s="4"]`), 'Tab goes to the score chosen');
+  await page.keyboard.press('ArrowRight');
+  assert.ok(await focused(`.pick[data-o="${maple}"] button[data-s="5"][aria-checked="true"]`));
+  assert.equal((await saved(id)).scores[rent][maple], 5);
+  await page.keyboard.press('Tab');
+  assert.ok(await focused(`.pick[data-o="${birch}"] button[aria-checked="true"]`), 'the next Tab goes to the next choice’s scores');
+
+  // Your answers on Weigh: the arrows change one, and the keyboard keeps its place while the weights follow.
+  const all = await example();
+  await page.goto(base + `#/d/${all}/weigh`);
+  await page.locator('.mini').first().waitFor();
+  assert.ok((await stops('.mini')).every(n => n === 1), 'each pair’s answers are one Tab stop');
+  const [a, b] = await page.locator('.pairs li').first().evaluate(li => [li.dataset.a, li.dataset.b]);
+  await tabFromSteps();
+  assert.ok(await focused(`li[data-a="${a}"] .mini button[aria-checked="true"]`), 'Tab goes to the answer chosen');
+  const before = await page.locator('.weights').innerText();
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(100);
+  assert.ok(await focused(`li[data-a="${a}"][data-b="${b}"] .mini button[aria-checked="true"]`), 'the focus stays on the answer just chosen');
+  assert.notEqual(await page.locator('.weights').innerText(), before, 'and the weights follow');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

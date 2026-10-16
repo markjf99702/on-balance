@@ -1,7 +1,7 @@
 // The first three steps: list the choices and what matters, weigh what matters, score the choices.
 import * as M from './model.js';
 import { store } from './store.js';
-import { esc, dot, ui, frame, refresh, on, fromName, notReady } from './ui.js';
+import { esc, dot, ui, frame, refresh, on, fromName, notReady, rove, byArrows } from './ui.js';
 
 const IDEAS = ['Cost', 'Time', 'Where it is', 'Quality', 'Space', 'Fun', 'Risk', 'Hassle', 'The people', 'Growth', 'Looks', 'Stress', 'Health', 'Family'];
 
@@ -221,6 +221,7 @@ export function weigh(d) {
           M.setPair(v.pairs, a.id, b.id, Number(t.dataset.v));
           store.put(d);
           document.querySelectorAll('.five button').forEach(btn => btn.setAttribute('aria-checked', btn === t));
+          if (byArrows()) return; // stay on the question until Enter, Space or a tap says that's the answer
           const later = schedule.map((p, i) => i).filter(i => i > qi && M.getPair(v.pairs, ...schedule[i]) === undefined);
           const earlier = schedule.map((p, i) => i).filter(i => i < qi && M.getPair(v.pairs, ...schedule[i]) === undefined);
           const nextQ = later[0] ?? earlier[0];
@@ -274,9 +275,12 @@ export function weigh(d) {
       if (!t) return;
       const li = t.closest('li[data-a]');
       if (li && t.dataset.v !== undefined) {
+        const focused = document.activeElement === t;
         M.setPair(v.pairs, li.dataset.a, li.dataset.b, Number(t.dataset.v));
         store.put(d);
         weigh(d);
+        // From the keyboard, keep the place: on the answer just chosen, not back at the top.
+        if (focused) document.querySelector(`li[data-a="${li.dataset.a}"][data-b="${li.dataset.b}"] button[data-v="${t.dataset.v}"]`)?.focus();
       } else if (t.dataset.go === 'rest') {
         v.enough = false;
         ui.q[d.id] = open[0];
@@ -381,6 +385,7 @@ export function score(d) {
       if (v.scores[c][o] === n) delete v.scores[c][o]; else v.scores[c][o] = n;
       store.put(d);
       box.querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', v.scores[c][o] === Number(b.dataset.s)));
+      rove(box);
       refresh(d, 'score', scoreNext(d));
     },
   });

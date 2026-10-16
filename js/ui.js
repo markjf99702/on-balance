@@ -31,6 +31,30 @@ for (const type of ['click', 'input', 'change', 'keydown']) {
   app.addEventListener(type, e => handlers[type]?.(e));
 }
 
+// Answers and scores are radio buttons, and each set of them is one Tab stop: the one chosen, or the first when
+// none is. The arrow keys move along the set and choose, as screen readers say radio buttons do.
+export function rove(set, stop = set.querySelector('[role=radio][aria-checked="true"]') || set.querySelector('[role=radio]')) {
+  for (const b of set.querySelectorAll('[role=radio]')) b.tabIndex = b === stop ? 0 : -1;
+}
+let arrowed = false;
+// True while the arrow keys are choosing, so a screen can choose without moving on, as it would for a tap.
+export const byArrows = () => arrowed;
+app.addEventListener('focusin', e => {
+  const set = e.target.closest?.('[role=radiogroup]');
+  if (set && e.target.matches('[role=radio]')) rove(set, e.target);
+});
+app.addEventListener('keydown', e => {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  const set = e.target.closest?.('[role=radiogroup]');
+  if (!step || !set || !e.target.matches('[role=radio]') || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  e.preventDefault();
+  const all = [...set.querySelectorAll('[role=radio]')];
+  const next = all[(all.indexOf(e.target) + step + all.length) % all.length];
+  next.focus();
+  arrowed = true;
+  try { next.click(); } finally { arrowed = false; }
+});
+
 const STEPS = [['list', 'List'], ['weigh', 'Weigh'], ['score', 'Score'], ['result', 'Result']];
 
 function stepsHTML(d, step) {
@@ -52,6 +76,7 @@ export function frame(d, step, body, next = '') {
     </div>
     <div id="body">${body}</div>
     <div class="next-bar" id="next"${next ? '' : ' hidden'}>${next}</div>`;
+  for (const set of app.querySelectorAll('[role=radiogroup]')) rove(set);
 }
 
 // What a step shows until the steps it needs are done.
