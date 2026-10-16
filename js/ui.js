@@ -79,19 +79,34 @@ export function refresh(d, step, next) {
   }
 }
 
-let toastTimer, showing = null;
-export function toast(message, action) {
+let toastTimer, showing = null, waiting = null;
+export function toast(message, action, ms = action ? 6000 : 2600) {
   const el = document.getElementById('toast');
   el.innerHTML = `<span>${esc(message)}</span>${action ? `<button type="button">${esc(action.label)}</button>` : ''}`;
   el.hidden = false;
   showing = action || null;
-  if (action) el.querySelector('button').onclick = () => { el.hidden = true; showing = null; action.run(); };
+  const gone = () => { el.hidden = true; showing = null; };
+  if (action) el.querySelector('button').onclick = () => { gone(); action.run(); toastWaiting(); };
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.hidden = true; showing = null; }, action ? 6000 : 2600);
+  toastTimer = setTimeout(() => { gone(); toastWaiting(); }, ms);
 }
 // The action on the toast that's showing, if there is one: a second delete while it's up joins the first,
 // so one Undo brings both back (a quick second tap lands on the next row's ✕).
 export const toastAction = () => showing;
+
+// A toast that mustn't be missed: it waits until nothing covers it, after any toast the same tap brings up
+// (and that toast's Undo), and until the share sheet is closed.
+export function toastSoon(message) {
+  waiting = message;
+  setTimeout(toastWaiting);
+}
+function toastWaiting() {
+  if (!waiting || !document.getElementById('toast').hidden || document.getElementById('sheet').open) return;
+  const message = waiting;
+  waiting = null;
+  toast(message, null, 8000);
+}
+document.getElementById('sheet').addEventListener('close', toastWaiting);
 
 // The sheet that slides up for sharing. bind() wires up what's inside once it's drawn.
 export function sheet(html, bind) {

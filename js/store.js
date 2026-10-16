@@ -18,8 +18,14 @@ function read() {
 
 let state = read();
 
+// The browser can refuse to save (storage full, or blocked). It still works for this visit, but nothing would be
+// here after a reload, so the first refusal is passed on (onRefused) for the page to say so once.
+const refusals = [];
+let refused = false;
 function write() {
-  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* can't save here; it still works for this visit */ }
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {
+    if (!refused) { refused = true; refusals.forEach(f => f()); }
+  }
 }
 
 // Another tab saved (or cleared the site's storage): carry on from what's there now,
@@ -47,6 +53,8 @@ export const store = {
   },
   // f runs after another tab changes what's saved, to draw the screen again from it.
   onChange(f) { changed.push(f); },
+  // f runs the first time in a visit that the browser refuses to save.
+  onRefused(f) { refusals.push(f); },
   get name() { return state.name || ''; },
   set name(v) { state.name = String(v || '').slice(0, 40); write(); },
   backup: () => JSON.stringify({ app: 'on-balance', version: 1, saved: new Date().toISOString(), ...state }, null, 1),

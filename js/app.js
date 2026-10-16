@@ -4,7 +4,7 @@ import { store } from './store.js';
 import { readJoin, readAnswer } from './share.js';
 import { makeExample, exampleTitles } from './examples.js';
 import { scaleSVG, setTilt } from './scale.js';
-import { app, esc, ui, on, go, toast, toastAction, day, names } from './ui.js';
+import { app, esc, ui, on, go, toast, toastAction, toastSoon, day, names } from './ui.js';
 import { list, weigh, score } from './steps.js';
 import { result } from './result.js';
 
@@ -232,6 +232,11 @@ function stopIdle() { cancelAnimationFrame(idle); }
 
 window.addEventListener('hashchange', () => route());
 store.onChange(() => route(false));
+// Saving can fail (storage full, or blocked), and everything would be gone after a reload: say so, once.
+// A backup is made from what's open, so it still works; the one-file copy shown inside another page can't offer it.
+store.onRefused(() => toastSoon(canSave()
+  ? 'This browser isn’t saving your decisions. Save a backup before you close the page.'
+  : 'This browser isn’t saving your decisions, so they’ll be gone when you close the page.'));
 route();
 
 if ('serviceWorker' in navigator && !('single' in document.documentElement.dataset) && location.protocol !== 'file:') {

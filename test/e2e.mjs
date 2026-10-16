@@ -668,6 +668,39 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- When the browser won't save ----------
+// It says so once a visit, after the toast the same tap brings up (and its Undo) rather than over it.
+{
+  const { ctx, page } = await device();
+  await ctx.addInitScript(() => {
+    const hall = { id: 'q1', title: 'Paint the hall', options: [{ id: 'a', name: 'White' }, { id: 'b', name: 'Green' }], criteria: [{ id: 'c', name: 'Cost', color: 0 }], me: { pairs: {}, mode: 'pairs', manual: {}, scores: { c: { a: 4, b: 3 } } }, others: [], shared: null, updated: 5 };
+    localStorage.setItem('on-balance', JSON.stringify({ decisions: [hall], name: '' }));
+    Storage.prototype.setItem = () => { throw new DOMException('The quota has been exceeded.', 'QuotaExceededError'); };
+  });
+  await page.goto(base);
+  await page.locator('.dlist').waitFor();
+  await page.evaluate(() => {
+    const el = document.getElementById('toast');
+    window.said = [];
+    new MutationObserver(() => window.said.push(el.innerText)).observe(el, { childList: true });
+  });
+  await page.locator('.del').click(); // the first save the browser refuses
+  await page.waitForTimeout(300);
+  assert.match(await page.locator('#toast').innerText(), /Deleted “Paint the hall”/, 'the warning waits for the Undo toast');
+  await page.click('#toast button');
+  await page.locator('#toast:has-text("This browser isn’t saving your decisions. Save a backup before you close the page.")').waitFor({ timeout: 5000 });
+  assert.equal(await page.locator('.dlist li').count(), 1, 'Undo still works for this visit');
+  await page.locator('.del').click();
+  await page.click('#toast button');
+  await page.waitForTimeout(300);
+  assert.equal(await page.evaluate(() => window.said.filter(t => t.includes('isn’t saving')).length), 1, 'it says so once');
+  // The next visit says so again, on its first save.
+  const again = watch(await ctx.newPage());
+  await again.goto(base + '#/new');
+  await again.locator('#toast:has-text("This browser isn’t saving your decisions.")').waitFor({ timeout: 5000 });
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();
