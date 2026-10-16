@@ -9,7 +9,7 @@
   &nbsp;
   <img src="docs/phone-weigh.png" alt="Question 4 of 10: which matters more to you here, Commute or Space? Five circles from much more to much more, biggest at the ends" width="250">
   &nbsp;
-  <img src="docs/phone-differ.png" alt="Where you differ: Sam puts less weight on Rent, 14% against your 36%, and more on Light; Sam gave Birch Avenue a 1 for the area where you gave it a 3" width="250">
+  <img src="docs/phone-differ.png" alt="Where you differ: Sam puts less weight on Rent, 14% against your 37%, and more on Light; Sam gave Birch Avenue a 1 for the area where you gave it a 3" width="250">
 </p>
 
 ## How it works
