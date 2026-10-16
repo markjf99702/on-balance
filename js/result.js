@@ -4,18 +4,18 @@ import * as M from './model.js';
 import { store } from './store.js';
 import { joinLink, answerLink } from './share.js';
 import { scaleSVG, setTilt, tiltFor } from './scale.js';
-import { esc, dot, tagged, pct, ui, frame, on, go, toast, toastAction, sheet, copy, day, names, fromName, notReady } from './ui.js';
+import { esc, dot, tagged, ui, frame, on, go, toast, toastAction, sheet, copy, day, names, fromName, notReady } from './ui.js';
 
 function listWords(items, and = 'and') {
   return items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} ${and} ${items[items.length - 1]}`;
 }
 const orWords = items => listWords(items, 'or');
 
-// What something counts for now, with a decimal or two when it takes them to tell it apart from
-// the whole percent suggested: "27% instead of 26.5%", not "27% instead of 27%".
-function nowPct(from, to) {
+// What something counts for now: the whole percent the list shows for it, or a decimal or two when it takes them
+// to tell it apart from the whole percent suggested: "27% instead of 26.5%", not "27% instead of 27%".
+function nowPct(from, to, whole) {
   for (let places = 0; places <= 2; places++) {
-    const shown = places ? (from * 100).toFixed(places) : String(Math.round(from * 100));
+    const shown = places ? (from * 100).toFixed(places) : String(whole);
     if (Number(shown) !== to) return `${shown}%`;
   }
   return `${(from * 100).toFixed(3)}%`;
@@ -43,6 +43,7 @@ export function result(d) {
   const alive = rank.filter(r => !r.out.length);
   const [W, R] = alive;
   const who = sel === 'me' ? 'you' : sel === 'together' ? 'you both' : voices.find(([k]) => k === sel)[1];
+  const shown = M.wholePercents(view.w); // how much each thing counts, as the legend shows it
 
   let verdictCard, flipCard = '', gutCard = '';
   if (!W) {
@@ -97,8 +98,8 @@ export function result(d) {
           const c = crit[f.weight.criterion];
           const { to } = f.weight;
           items.push(to <= 0
-            ? `${esc(n[R.id])} would come out ahead if ${tagged(c)} didn’t count at all. It counts for ${nowPct(f.weight.from, 0)} now.`
-            : `${esc(n[R.id])} would come out ahead if ${tagged(c)} counted for ${to}% instead of ${nowPct(f.weight.from, to)}.`);
+            ? `${esc(n[R.id])} would come out ahead if ${tagged(c)} didn’t count at all. It counts for ${nowPct(f.weight.from, 0, shown[c.id])} now.`
+            : `${esc(n[R.id])} would come out ahead if ${tagged(c)} counted for ${to}% instead of ${nowPct(f.weight.from, to, shown[c.id])}.`);
         }
         if (f.score) {
           const c = crit[f.score.criterion];
@@ -139,19 +140,25 @@ export function result(d) {
         </li>`).join('')}
       </ol>
       ${unscored.length ? `<p class="hint">${esc(who)} didn’t score ${orWords(unscored.map(o => `<b>${esc(n[o.id])}</b>`))}: ${unscored.length > 1 ? 'they weren’t' : 'it wasn’t'} on the list ${esc(who)} answered.</p>` : ''}
-      <div class="legend" aria-label="How much each thing counts">${d.criteria.map(c => `<span>${dot(c)}${esc(c.name)} <b>${pct(view.w[c.id])}</b></span>`).join('')}</div>
+      <div class="legend" aria-label="How much each thing counts">${d.criteria.map(c => `<span>${dot(c)}${esc(c.name)} <b>${shown[c.id]}%</b></span>`).join('')}</div>
     </div>`;
 
   let diffCard = '';
   if (sel === 'together') {
-    const diffs = d.others.flatMap(o => M.differences(d, d.me, o).map(x => ({ ...x, who: o.name }))).sort((a, b) => b.size - a.size).slice(0, 5);
+    // Weights in the same whole percents as each person's own legend.
+    const percents = v => M.wholePercents(M.voiceWeights(d.criteria, v));
+    const yours = percents(d.me);
+    const diffs = d.others.flatMap(o => {
+      const theirs = percents(o);
+      return M.differences(d, d.me, o).map(x => ({ ...x, who: o.name, theirs }));
+    }).sort((a, b) => b.size - a.size).slice(0, 5);
     diffCard = `
       <div class="card">
         <h2>Where you differ</h2>
         ${diffs.length ? `<ul class="diffs">${diffs.map(x => {
           const c = crit[x.criterion];
           const them = esc(x.who);
-          if (x.kind === 'weight') return `<li>${dot(c)}<span>${them} puts ${x.b > x.a ? 'more' : 'less'} weight on <b>${esc(c.name)}</b>: ${pct(x.b)} against your ${pct(x.a)}.</span></li>`;
+          if (x.kind === 'weight') return `<li>${dot(c)}<span>${them} puts ${x.b > x.a ? 'more' : 'less'} weight on <b>${esc(c.name)}</b>: ${x.theirs[c.id]}% against your ${yours[c.id]}%.</span></li>`;
           if (x.kind === 'out') return x.b === 0
             ? `<li>${dot(c)}<span>${them} ruled out <b>${esc(n[x.option])}</b> on ${esc(c.name)}. You gave it a ${x.a}.</span></li>`
             : `<li>${dot(c)}<span>You ruled out <b>${esc(n[x.option])}</b> on ${esc(c.name)}. ${them} gave it a ${x.b}.</span></li>`;

@@ -1,7 +1,7 @@
 // The first three steps: list the choices and what matters, weigh what matters, score the choices.
 import * as M from './model.js';
 import { store } from './store.js';
-import { esc, dot, pct, ui, frame, refresh, on, fromName, notReady } from './ui.js';
+import { esc, dot, ui, frame, refresh, on, fromName, notReady } from './ui.js';
 
 const IDEAS = ['Cost', 'Time', 'Where it is', 'Quality', 'Space', 'Fun', 'Risk', 'Hassle', 'The people', 'Growth', 'Looks', 'Stress', 'Health', 'Family'];
 
@@ -302,15 +302,16 @@ function roundWords(circle, crit) {
 
 export function weightBars(d, w) {
   const max = Math.max(...Object.values(w), 0.0001);
+  const shown = M.wholePercents(w);
   return `<ul class="weights">${[...d.criteria].sort((a, b) => w[b.id] - w[a.id]).map(c => `
-    <li><span class="name">${dot(c)}${esc(c.name)}</span><span class="track"><i style="width:${(w[c.id] / max) * 100}%;--bc:var(--c${c.color})"></i></span><b>${pct(w[c.id])}</b></li>`).join('')}
+    <li><span class="name">${dot(c)}${esc(c.name)}</span><span class="track"><i style="width:${(w[c.id] / max) * 100}%;--bc:var(--c${c.color})"></i></span><b>${shown[c.id]}%</b></li>`).join('')}
   </ul>`;
 }
 
 function sliders(d) {
   const v = d.me;
   const ids = d.criteria.map(c => c.id);
-  const w = M.manualWeights(ids, v.manual);
+  const w = M.wholePercents(M.manualWeights(ids, v.manual));
   frame(d, 'weigh', `
     <div class="card">
       <h2>How much each thing counts</h2>
@@ -318,7 +319,7 @@ function sliders(d) {
       <ul class="sliders">${d.criteria.map(c => `
         <li><label for="s-${c.id}">${dot(c)}${esc(c.name)}</label>
           <input type="range" id="s-${c.id}" data-c="${c.id}" min="0" max="10" step="1" value="${v.manual[c.id] ?? 5}" style="--rc:var(--c${c.color})">
-          <b data-pct="${c.id}">${pct(w[c.id])}</b></li>`).join('')}
+          <b data-pct="${c.id}">${w[c.id]}%</b></li>`).join('')}
       </ul>
     </div>
     <p class="switch"><button type="button" class="link-btn" data-go="pairs">Compare them in pairs instead</button></p>`,
@@ -329,8 +330,8 @@ function sliders(d) {
       if (!id) return;
       v.manual[id] = Number(e.target.value);
       store.put(d);
-      const now = M.manualWeights(ids, v.manual);
-      for (const c of ids) document.querySelector(`[data-pct="${c}"]`).textContent = pct(now[c]);
+      const now = M.wholePercents(M.manualWeights(ids, v.manual));
+      for (const c of ids) document.querySelector(`[data-pct="${c}"]`).textContent = `${now[c]}%`;
     },
     click(e) {
       if (e.target.closest('[data-go="pairs"]')) {
@@ -354,12 +355,12 @@ function scoreNext(d) {
 export function score(d) {
   if (!M.progress(d, d.me).listed) return notReady(d, 'score');
   const v = d.me;
-  const w = M.voiceWeights(d.criteria, v);
+  const w = M.wholePercents(M.voiceWeights(d.criteria, v));
   frame(d, 'score', `
     <p class="lede">Score each choice from 1 (poor) to 5 (great) on each thing. Score how good it is, not how much of it there is: a low price scores high. ✕ rules a choice out, however well it does on everything else.</p>
     ${d.criteria.map(c => `
       <div class="card crit">
-        <h2><span class="cname">${dot(c)}<span>${esc(c.name)}</span></span> <span class="aside">counts ${pct(w[c.id])}</span></h2>
+        <h2><span class="cname">${dot(c)}<span>${esc(c.name)}</span></span> <span class="aside">counts ${w[c.id]}%</span></h2>
         <ul class="scores">${d.options.map(o => {
           const s = v.scores[c.id]?.[o.id];
           return `<li><span class="oname" id="n-${c.id}-${o.id}">${esc(o.name)}</span>

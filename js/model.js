@@ -131,6 +131,18 @@ export function voiceWeights(criteria, voice) {
   return voice?.mode === 'manual' ? manualWeights(ids, voice.manual) : weightsFromPairs(ids, voice?.pairs || {});
 }
 
+// Weights as whole percents that add up to 100, as a list of them should, for showing only (the sums keep the
+// exact shares): each one rounded down, then the points still missing go to the ones that lost the most, the
+// first on the list when two lost the same. Each is within a point of its exact share, and one at 0 stays at 0.
+export function wholePercents(w) {
+  const ids = Object.keys(w);
+  const out = Object.fromEntries(ids.map(id => [id, Math.floor(w[id] * 100 + 1e-9)]));
+  const lost = id => Math.round((w[id] * 100 - out[id]) * 1e6); // in millionths, so rounding noise can't reorder a tie
+  let missing = Math.round(ids.reduce((s, id) => s + w[id] * 100, 0)) - ids.reduce((s, id) => s + out[id], 0);
+  for (const id of [...ids].sort((a, b) => lost(b) - lost(a))) if (missing-- > 0) out[id]++;
+  return out;
+}
+
 // Answers that go round in a circle: a over b, b over c, but c over a, or round more of them
 // (a over b, b over c, c over d, but d over a). Each circle once, the smallest first.
 export function circles(ids, pairs) {

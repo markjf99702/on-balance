@@ -701,6 +701,35 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Weights shown as whole percents ----------
+// Each list of them adds up to 100, and a sentence about one of them says what its list says.
+{
+  const { ctx, page } = await device();
+  await page.goto(base + '#/example/0');
+  await page.locator('.verdict').waitFor();
+  const total = async sel => (await page.locator(sel).allInnerTexts()).reduce((s, t) => s + Number(t.match(/(\d+)%/)[1]), 0);
+  assert.equal(await total('.legend b'), 100, 'the legend for the two of you adds up to 100');
+  const differ = await page.locator('.diffs').innerText();
+  await page.click('.voices button:has-text("You")');
+  assert.equal(await total('.legend b'), 100, 'your legend adds up to 100');
+  const rent = await page.locator('.legend span:has-text("Rent") b').innerText();
+  assert.ok(differ.includes(`Sam puts less weight on Rent: 14% against your ${rent}.`), `Where you differ says your ${rent} for Rent, as your legend does`);
+  await page.click('.steps a:has-text("Weigh")');
+  await page.locator('.weights').waitFor();
+  assert.equal(await total('.weights b'), 100, 'the weights on Weigh add up to 100');
+  assert.equal(await page.locator('.weights li:has-text("Rent") b').innerText(), rent);
+  await page.click('.steps a:has-text("Score")');
+  await page.locator('.crit').first().waitFor();
+  assert.equal(await total('.crit .aside'), 100, 'what each thing counts on Score adds up to 100');
+  await page.click('.steps a:has-text("Weigh")');
+  await page.click('[data-go="manual"]');
+  await page.locator('.sliders').waitFor();
+  assert.equal(await total('.sliders b'), 100, 'the sliders add up to 100');
+  await page.locator('input[type=range]').nth(3).fill('7');
+  assert.equal(await total('.sliders b'), 100, 'and still do after one moves');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

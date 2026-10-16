@@ -20,7 +20,6 @@ export const tagged = c => {
   const [first, ...rest] = esc(c.name).split(' ');
   return `<span class="nw">${dot(c)}<b>${first}</b></span>${rest.length ? `<b> ${rest.join(' ')}</b>` : ''}`;
 };
-export const pct = w => `${Math.round(w * 100)}%`;
 export const day = t => new Date(t).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 export const names = d => Object.fromEntries([...d.options, ...d.criteria].map(x => [x.id, x.name]));
 export const fromName = d => d.shared?.from || 'Whoever asked';

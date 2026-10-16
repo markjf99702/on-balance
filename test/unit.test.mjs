@@ -144,6 +144,29 @@ test('what would change it can give weight to something that counts for nothing'
   assert.deepEqual([f.weight?.criterion, f.weight?.to], ['k', 51]);
 });
 
+test('weights shown as whole percents add up to 100', () => {
+  const total = p => Object.values(p).reduce((s, n) => s + n, 0);
+  // The apartment example: each share rounded on its own came to 36 + 18 + 18 + 9 + 18 = 99, and Together to 99.
+  const flat = makeExample(0);
+  assert.deepEqual(Object.values(M.wholePercents(M.voiceWeights(flat.criteria, flat.me))), [37, 18, 18, 9, 18]);
+  assert.equal(total(M.wholePercents(M.togetherView(flat).w)), 100);
+  for (let seed = 1; seed <= 1000; seed++) {
+    for (const d of [randomDecision(seed), handWeighted(seed)]) {
+      const w = M.voiceWeights(d.criteria, d.me), shown = M.wholePercents(w);
+      assert.equal(total(shown), 100, `seed ${seed}: adds up to 100`);
+      for (const c of d.criteria) {
+        assert.ok(Number.isInteger(shown[c.id]) && Math.abs(shown[c.id] - w[c.id] * 100) < 1, `seed ${seed}: within a point`);
+        if (!w[c.id]) assert.equal(shown[c.id], 0, `seed ${seed}: something that counts for nothing shows 0`);
+      }
+    }
+  }
+  // At the edges: one thing, eight level things, and level shares, where the first on the list gets the point.
+  assert.deepEqual(M.wholePercents({ a: 1 }), { a: 100 });
+  assert.deepEqual(Object.values(M.wholePercents(Object.fromEntries('abcdefgh'.split('').map(k => [k, 1 / 8])))), [13, 13, 13, 13, 12, 12, 12, 12]);
+  assert.deepEqual(M.wholePercents({ a: 1 / 3, b: 1 / 3, c: 1 / 3 }), { a: 34, b: 33, c: 33 });
+  assert.deepEqual(M.wholePercents({ a: 0, b: 0.5, c: 0.5 }), { a: 0, b: 50, c: 50 });
+});
+
 test('steadiness adds up and repeats for the same seed', () => {
   const d = randomDecision(7);
   const view = M.viewOf(d, d.me);
