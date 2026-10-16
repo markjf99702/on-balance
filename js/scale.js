@@ -23,6 +23,29 @@ function lines(name, n = 16) {
   return two;
 }
 
+// lines() counts letters, but letters differ in width: 16 W's are far wider than 16 i's, and would run off the
+// balance under the left pan. So once the balance is in the page, any line still wider than its pan (about 140)
+// is shortened until it fits, with an ellipsis. It starts from the whole line each time, so it can run again when
+// the fonts have loaded and the widths change.
+const NAME_MAX = 140;
+const letters = s => (typeof Intl.Segmenter === 'function' ? [...new Intl.Segmenter().segment(s)].map(x => x.segment) : [...s]);
+export function fitNames(svg) {
+  for (const line of svg.querySelectorAll('.pan-name tspan')) {
+    line.dataset.whole ??= line.textContent;
+    line.textContent = line.dataset.whole;
+    if (line.getComputedTextLength() <= NAME_MAX) continue;
+    const parts = letters(line.dataset.whole.replace(/…$/, ''));
+    const cut = k => { line.textContent = parts.slice(0, k).join('').trimEnd() + '…'; };
+    let lo = 0, hi = parts.length; // the most letters that fit
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      cut(mid);
+      if (line.getComputedTextLength() <= NAME_MAX) lo = mid; else hi = mid - 1;
+    }
+    cut(lo);
+  }
+}
+
 export function tiltFor(left, right) {
   return MAX_TILT * Math.tanh((left - right) * 7);
 }

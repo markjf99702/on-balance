@@ -3,7 +3,7 @@
 import * as M from './model.js';
 import { store } from './store.js';
 import { joinLink, answerLink } from './share.js';
-import { scaleSVG, setTilt, tiltFor } from './scale.js';
+import { scaleSVG, setTilt, tiltFor, fitNames } from './scale.js';
 import { esc, dot, tagged, ui, frame, on, go, toast, toastAction, sheet, copy, day, names, fromName, notReady } from './ui.js';
 
 function listWords(items, and = 'and') {
@@ -198,6 +198,8 @@ export function result(d) {
   // Settle the balance: from where it was last time (or level) to where it tips now.
   const svg = document.querySelector('.scale');
   if (svg && W && R) {
+    fitNames(svg);
+    document.fonts?.ready.then(() => { if (svg.isConnected) fitNames(svg); });
     const key = d.id + sel;
     const target = tiltFor(W.total, R.total);
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;

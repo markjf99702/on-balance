@@ -730,6 +730,36 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- A long word in wide letters under a pan ----------
+// Names are cut at about 16 letters, but 16 W's are far wider than 16 i's: each line is kept to the width of its pan.
+{
+  const { ctx, page } = await device();
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto(base);
+  const id = await page.evaluate(() => {
+    const { store, M } = window.onBalance;
+    const d = M.blankDecision();
+    d.title = 'Wide letters';
+    d.options = [{ id: 'a', name: 'WWWWWWWWWWWWWWWWWW' }, { id: 'b', name: 'Curry' }];
+    d.criteria = [{ id: 'x', name: 'Taste', color: 0 }];
+    d.me.scores = { x: { a: 5, b: 3 } };
+    store.put(d);
+    return d.id;
+  });
+  await page.goto(base + `#/d/${id}/result`);
+  await page.locator('.scale').waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  await page.waitForTimeout(100);
+  const lines = await page.locator('.pan-name tspan').evaluateAll(ts => ts.map(t => [t.textContent, t.getComputedTextLength()]));
+  for (const [line, width] of lines) assert.ok(width <= 140.5, `"${line}" fits under its pan (${width.toFixed(1)} wide)`);
+  assert.match(lines[0][0], /^W{6,}…$/, 'the long name is cut short with …');
+  assert.equal(lines[1][0], 'Curry', 'a short name is as it was');
+  const [label, card] = [await page.locator('.hang-left .pan-name').boundingBox(), await page.locator('.verdict').boundingBox()];
+  assert.ok(label.x >= card.x && label.x + label.width <= card.x + card.width, 'the name stays on the card');
+  assert.match(await page.locator('.scale').getAttribute('aria-label'), /WWWWWWWWWWWWWWWWWW, 100/, 'the whole name is still in the balance’s label');
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();
