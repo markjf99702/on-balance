@@ -622,6 +622,52 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- Someone's answers from before the list changed ----------
+// Their own result ranks only the choices they scored, and says which it leaves out; Together is as it was.
+{
+  const { ctx, page } = await device();
+  await page.goto(base);
+  const id = await page.evaluate(() => {
+    const { store, M } = window.onBalance;
+    const d = M.blankDecision();
+    d.title = 'Dinner tonight';
+    d.options = [{ id: 'a', name: 'Pizza' }, { id: 'b', name: 'Curry' }, { id: 'c', name: 'Tacos' }];
+    d.criteria = [{ id: 'x', name: 'Taste', color: 0 }];
+    d.me.scores = { x: { a: 4, b: 4, c: 4 } };
+    d.others = [{ name: 'Sam', at: 5, mode: 'pairs', pairs: {}, manual: {}, scores: { x: { a: 2, b: 1 } } }]; // before Tacos
+    store.put(d);
+    return d.id;
+  });
+  const samSees = async scores => {
+    await page.evaluate(([id, scores]) => { const { store } = window.onBalance; const d = store.get(id); d.others[0].scores = { x: scores }; store.put(d); }, [id, scores]);
+    await page.goto(base + '#/');
+    await page.goto(base + `#/d/${id}/result`);
+    await page.click('.voices button:has-text("Sam")');
+    await page.locator('.voices button[aria-pressed="true"]:has-text("Sam")').waitFor();
+  };
+  await samSees({ a: 2, b: 1 });
+  assert.match(await page.locator('.verdict h2').innerText(), /Pizza/, 'Sam’s result crowns a choice Sam scored');
+  assert.match(await page.locator('.verdict .sub').innerText(), /ahead of Curry, 25 to 0/);
+  assert.deepEqual(await page.locator('.rank .o').allInnerTexts(), ['Pizza', 'Curry']);
+  assert.match(await page.locator('.notice').innerText(), /^Sam’s answers are from before the list changed, so this ranks only the choices Sam scored\.$/);
+  assert.equal(await page.locator('.rank + .hint').innerText(), 'Sam didn’t score Tacos: it wasn’t on the list Sam answered.');
+  await fits(page, 'someone’s result from before the list changed');
+  await page.click('.voices button:has-text("Together")');
+  assert.equal(await page.locator('.rank .o').count(), 3, 'Together ranks every choice');
+  assert.equal(await page.locator('.notice').count(), 0);
+  // At the edges: one choice Sam scored, one scored and one ruled out, and none at all.
+  await samSees({ a: 2 });
+  assert.deepEqual(await page.locator('.verdict').evaluate(v => [v.querySelector('.pill').innerText, v.querySelector('h2').innerText, v.querySelector('.sub').innerText]), ['ONLY ONE SCORED', 'Pizza', 'The only choice Sam scored.']);
+  assert.equal(await page.locator('.rank + .hint').innerText(), 'Sam didn’t score Curry or Tacos: they weren’t on the list Sam answered.');
+  await samSees({ a: 2, b: 0 });
+  assert.equal(await page.locator('.verdict .sub').innerText(), 'Everything else Sam scored is ruled out.');
+  assert.deepEqual(await page.locator('.rank .o').allInnerTexts(), ['Pizza', 'Curry']);
+  await samSees({});
+  assert.match(await page.locator('#body').innerText(), /Nothing to rank\s+None of the choices on the list now were on the list Sam answered\./);
+  assert.equal(await page.locator('.rank li').count(), 0);
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

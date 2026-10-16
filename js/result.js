@@ -34,27 +34,36 @@ export function result(d) {
   let sel = ui.voice[d.id];
   if (!voices.some(([k]) => k === sel)) sel = d.others.length ? 'together' : 'me';
   const selVoice = voices.find(([k]) => k === sel)[2];
-  const view = sel === 'together' ? M.togetherView(d) : M.viewOf(d, selVoice);
-  const rank = M.ranking(d, view);
+  // One person's answers cover the list they answered. A choice added since has no scores from them, so their own
+  // result ranks only the choices they scored, and says which it leaves out. Together puts together what was given.
+  const unscored = selVoice ? d.options.filter(o => !d.criteria.some(c => selVoice.scores?.[c.id]?.[o.id] !== undefined)) : [];
+  const dv = unscored.length ? { ...d, options: d.options.filter(o => !unscored.includes(o)) } : d;
+  const view = sel === 'together' ? M.togetherView(d) : M.viewOf(dv, selVoice);
+  const rank = M.ranking(dv, view);
   const alive = rank.filter(r => !r.out.length);
   const [W, R] = alive;
   const who = sel === 'me' ? 'you' : sel === 'together' ? 'you both' : voices.find(([k]) => k === sel)[1];
 
   let verdictCard, flipCard = '', gutCard = '';
   if (!W) {
-    verdictCard = `
+    verdictCard = rank.length ? `
       <div class="card empty">
         <span class="pill">Nothing left</span>
         <h2>Every choice is ruled out</h2>
         <p class="hint">Each one has a ✕ against something. Loosen one, or add another choice.</p>
         <a class="btn" href="#/d/${d.id}/score">Back to the scores</a>
+      </div>` : `
+      <div class="card empty">
+        <h2>Nothing to rank</h2>
+        <p class="hint">None of the choices on the list now were on the list ${esc(who)} answered.</p>
       </div>`;
   } else {
-    const shares = alive.length > 1 ? M.steadiness(d, view, M.hash(d.id + sel)) : { [W.id]: 1 };
+    const shares = alive.length > 1 ? M.steadiness(dv, view, M.hash(d.id + sel)) : { [W.id]: 1 };
     const v = M.verdict(shares[W.id], alive.length);
     const w100 = Math.round(W.total * 100), r100 = R ? Math.round(R.total * 100) : 0;
     const level = R && w100 === r100;
-    const sub = !R ? 'Everything else is ruled out.'
+    const ruled = rank.length - alive.length;
+    const sub = !R ? (!unscored.length ? 'Everything else is ruled out.' : ruled ? `Everything else ${esc(who)} scored is ruled out.` : `The only choice ${esc(who)} scored.`)
       : level ? `Level with ${esc(n[R.id])} on ${w100}. The coin below might help.`
       : `comes out ahead of ${esc(n[R.id])}, ${w100} to ${r100}.`;
     const others = alive.slice(1).map(r => `${esc(n[r.id])} ${Math.round(shares[r.id] * 100)}`).filter(s => !s.endsWith(' 0'));
@@ -65,7 +74,7 @@ export function result(d) {
     verdictCard = `
       <div class="card verdict">
         ${decided ? '<div class="stamp">Decided</div>' : ''}
-        <span class="pill ${v.key}">${level ? 'Dead heat' : v.label}</span>
+        <span class="pill ${v.key}">${level ? 'Dead heat' : !R && unscored.length && !ruled ? 'Only one scored' : v.label}</span>
         <h2 class="winner">${esc(n[W.id])}</h2>
         <p class="sub">${sub}</p>
         ${R ? scaleSVG(W, R, d.criteria, n, label) : ''}
@@ -76,7 +85,7 @@ export function result(d) {
       </div>`;
 
     if (R) {
-      const f = M.flips(d, view, W, R, sel !== 'together');
+      const f = M.flips(dv, view, W, R, sel !== 'together');
       const items = [];
       if (f.tie) {
         const counts = f.differ.length === d.criteria.length ? 'something' : orWords(f.differ.map(id => tagged(crit[id])));
@@ -129,6 +138,7 @@ export function result(d) {
           ${r.out.length ? `<span class="why">Ruled out on ${listWords(r.out.map(id => esc(n[id])))}</span>` : ''}
         </li>`).join('')}
       </ol>
+      ${unscored.length ? `<p class="hint">${esc(who)} didn’t score ${orWords(unscored.map(o => `<b>${esc(n[o.id])}</b>`))}: ${unscored.length > 1 ? 'they weren’t' : 'it wasn’t'} on the list ${esc(who)} answered.</p>` : ''}
       <div class="legend" aria-label="How much each thing counts">${d.criteria.map(c => `<span>${dot(c)}${esc(c.name)} <b>${pct(view.w[c.id])}</b></span>`).join('')}</div>
     </div>`;
 
@@ -170,6 +180,7 @@ export function result(d) {
 
   frame(d, 'result', `
     ${voices.length > 1 ? `<div class="voices" role="group" aria-label="Whose answers">${voices.map(([k, label]) => `<button type="button" data-voice="${k}" aria-pressed="${k === sel}">${esc(label)}</button>`).join('')}</div>` : ''}
+    ${unscored.length ? `<p class="notice stale">${esc(who)}’s answers are from before the list changed, so this ranks only the choices ${esc(who)} scored.</p>` : ''}
     ${verdictCard}
     ${flipCard}
     ${rankCard}
