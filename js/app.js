@@ -100,11 +100,11 @@ function answer(data) {
   try { a = readAnswer(data); } catch { return message('That link didn’t come through whole', 'Ask for it again, or copy all of it into the address bar.'); }
   const d = store.get(a.id);
   if (!d || d.shared) return message('That decision isn’t on this device', 'Answers go back to whoever asked, on the phone or computer they asked from.');
-  const replaced = M.addVoice(d, a);
+  const { name, replaced } = M.addVoice(d, a);
   store.put(d);
   ui.voice[d.id] = 'together';
   go(`/d/${d.id}/result`, true);
-  toast(replaced ? `Updated ${a.name}’s answers` : `Added ${a.name}’s answers`);
+  toast(replaced ? `Updated ${name}’s answers` : `Added ${name}’s answers`);
 }
 
 function statusOf(d) {

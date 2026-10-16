@@ -423,7 +423,11 @@ export function removeCriterion(d, cid) {
   }
 }
 
-// Adds (or replaces, by name) another person's answers, keeping only what still fits the decision.
+// Adds another person's answers, keeping only what still fits the decision. Answers under a name that's already
+// here replace that person's earlier ones. Answers without a name (a link carries a blank one as Someone) are
+// always kept apart, as Someone, Someone 2 and so on: two people who skip their name aren't the same person, and
+// a duplicate is easy to remove, where replaced answers can't be got back.
+// Returns the name they went in under, and whether they replaced someone's.
 export function addVoice(d, a) {
   const cids = new Set(d.criteria.map(c => c.id)), oids = new Set(d.options.map(o => o.id));
   const scores = {};
@@ -434,8 +438,13 @@ export function addVoice(d, a) {
   }
   const pairs = {};
   for (const [key, n] of Object.entries(a.pairs)) if (key.split('|').every(id => cids.has(id))) pairs[key] = n;
-  const voice = { name: a.name, at: Date.now(), mode: a.mode, pairs, manual: a.manual || {}, scores };
-  const i = d.others.findIndex(o => o.name.trim().toLowerCase() === a.name.trim().toLowerCase());
+  const same = name => o => o.name.trim().toLowerCase() === name.toLowerCase();
+  let name = String(a.name ?? '').trim(), i = -1;
+  if (!name || name.toLowerCase() === 'someone') {
+    name = 'Someone';
+    for (let k = 2; d.others.some(same(name)); k++) name = `Someone ${k}`;
+  } else i = d.others.findIndex(same(name));
+  const voice = { name, at: Date.now(), mode: a.mode, pairs, manual: a.manual || {}, scores };
   if (i >= 0) d.others[i] = voice; else d.others.push(voice);
-  return i >= 0;
+  return { name, replaced: i >= 0 };
 }

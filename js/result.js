@@ -357,8 +357,7 @@ function handSheet(d) {
 function merge(d) {
   const owner = store.get(d.shared.id);
   if (!owner) { toast('The original decision isn’t here any more.'); return; }
-  const name = d.shared.name || 'Someone';
-  const replaced = M.addVoice(owner, { name, ...d.me });
+  const { name, replaced } = M.addVoice(owner, { ...d.me, name: d.shared.name });
   store.put(owner);
   store.remove(d.id);
   ui.voice[owner.id] = 'together';

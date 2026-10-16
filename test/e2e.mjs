@@ -511,26 +511,31 @@ await mark.ctx.setOffline(false);
 }
 
 // ---------- Passing the phone to the same person twice ----------
-// Their second answers replace the first, and the toast says so.
+// Their second answers replace the first, and the toast says so. People who don't give a name are kept apart.
 {
   const { ctx, page } = await device();
   await page.goto(base + '#/example/1');
   await page.locator('.verdict').waitFor();
   const id = await page.evaluate(() => location.hash.split('/')[2]);
-  for (const said of ['Added', 'Updated']) {
-    const copyId = await page.evaluate(id => {
+  for (const [name, said] of [['Robin', 'Added Robin’s'], ['Robin', 'Updated Robin’s'], ['', 'Added Someone’s'], ['', 'Added Someone 2’s']]) {
+    const copyId = await page.evaluate(([id, name]) => {
       const { store, M } = window.onBalance;
       const d = store.get(id), copy = M.blankDecision();
       Object.assign(copy, { title: d.title, options: d.options.map(o => ({ ...o })), criteria: d.criteria.map(c => ({ ...c })), me: structuredClone(d.me) });
-      copy.shared = { id, from: 'Mark', local: true, name: 'Robin' };
+      copy.shared = { id, from: 'Mark', local: true, name };
       store.put(copy);
       return copy.id;
-    }, id);
+    }, [id, name]);
     await page.goto(base + `#/d/${copyId}/result`);
     await page.click('[data-act="merge"]');
-    await page.locator(`#toast:has-text("${said} Robin’s answers")`).waitFor({ timeout: 5000 });
+    await page.locator(`#toast:has-text("${said} answers")`).waitFor({ timeout: 5000 });
   }
-  assert.equal(await page.evaluate(id => window.onBalance.store.get(id).others.length, id), 1);
+  // A link sent back without a name says Someone, and joins them rather than replacing anyone.
+  const d = await page.evaluate(id => window.onBalance.store.get(id), id);
+  const threes = Object.fromEntries(d.criteria.map(c => [c.id, Object.fromEntries(d.options.map(o => [o.id, 3]))]));
+  await page.goto(base + '#/answer/' + pack({ v: 1, id, n: 'Someone', m: 'pairs', p: {}, h: {}, s: threes }));
+  await page.locator('#toast:has-text("Added Someone 3’s answers")').waitFor({ timeout: 5000 });
+  assert.deepEqual(await page.locator('.people li > span').allInnerTexts().then(t => t.map(s => s.split('’s')[0])), ['Robin', 'Someone', 'Someone 2', 'Someone 3']);
   await ctx.close();
 }
 

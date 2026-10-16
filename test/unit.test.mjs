@@ -207,9 +207,30 @@ test('links carry a decision there and answers back', () => {
   assert.deepEqual(a.scores[d.criteria[0].id], { [d.options[1].id]: 3 });
 
   // Answering twice under the same name replaces the first answers.
-  assert.equal(M.addVoice(d, { ...a, name: 'Robin' }), false);
-  assert.equal(M.addVoice(d, { ...a, name: 'robin' }), true);
+  assert.equal(M.addVoice(d, { ...a, name: 'Robin' }).replaced, false);
+  assert.equal(M.addVoice(d, { ...a, name: 'robin' }).replaced, true);
   assert.equal(d.others.filter(o => o.name.toLowerCase() === 'robin').length, 1);
+});
+
+test('answers without a name are kept apart, and only a name replaces earlier answers', () => {
+  const d = makeExample(1);
+  const [c] = d.criteria, [o] = d.options;
+  const answers = (name, s) => ({ id: d.id, name, mode: 'pairs', pairs: {}, manual: {}, scores: { [c.id]: { [o.id]: s } } });
+  // A link sent without a name carries Someone, as links already sent do.
+  const blank = readAnswer(pack({ v: 1, id: d.id, n: '', m: 'pairs', p: {}, s: { [c.id]: { [o.id]: 5 } } }));
+  assert.equal(blank.name, 'Someone');
+  assert.deepEqual(M.addVoice(d, blank), { name: 'Someone', replaced: false });
+  assert.deepEqual(M.addVoice(d, answers('Someone', 1)), { name: 'Someone 2', replaced: false });
+  assert.deepEqual(M.addVoice(d, answers('', 2)), { name: 'Someone 3', replaced: false }); // passing the phone without a name
+  assert.deepEqual(M.addVoice(d, answers('  someone ', 3)), { name: 'Someone 4', replaced: false });
+  assert.deepEqual(d.others.map(v => [v.name, v.scores[c.id][o.id]]), [['Someone', 5], ['Someone 2', 1], ['Someone 3', 2], ['Someone 4', 3]]);
+  // A name replaces only its own answers.
+  assert.deepEqual(M.addVoice(d, answers('Sam', 4)), { name: 'Sam', replaced: false });
+  assert.deepEqual(M.addVoice(d, answers(' sam', 2)), { name: 'sam', replaced: true });
+  assert.equal(d.others.length, 5);
+  // A number freed by removing someone's answers is used again first.
+  d.others.splice(1, 1);
+  assert.equal(M.addVoice(d, answers('Someone', 4)).name, 'Someone 2');
 });
 
 test('a link brings only ids the app makes, since ids go into the page as they are', () => {
