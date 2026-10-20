@@ -167,6 +167,19 @@ test('weights shown as whole percents add up to 100', () => {
   assert.deepEqual(M.wholePercents({ a: 0, b: 0.5, c: 0.5 }), { a: 0, b: 50, c: 50 });
 });
 
+test('how often each choice still wins, in times in 100, adds up to 100', () => {
+  // Each share rounded on its own read "Pizza still wins 100 times in 100, Curry 1", and 74 and 27.
+  assert.deepEqual(M.wholePercents({ pizza: 0.995, curry: 0.005 }), { pizza: 100, curry: 0 });
+  assert.deepEqual(M.wholePercents({ pizza: 0.735, curry: 0.265 }), { pizza: 74, curry: 26 });
+  const total = p => Object.values(p).reduce((s, n) => s + n, 0);
+  for (let seed = 1; seed <= 300; seed++) {
+    const d = randomDecision(seed);
+    const shares = M.steadiness(d, M.viewOf(d, d.me), seed), times = M.wholePercents(shares);
+    assert.equal(total(times), 100, `seed ${seed}: adds up to 100`);
+    for (const id in shares) assert.ok(Math.abs(times[id] - shares[id] * 100) < 1, `seed ${seed}: within a point`);
+  }
+});
+
 test('steadiness adds up and repeats for the same seed', () => {
   const d = randomDecision(7);
   const view = M.viewOf(d, d.me);

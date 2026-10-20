@@ -827,6 +827,28 @@ await mark.ctx.setOffline(false);
   await ctx.close();
 }
 
+// ---------- How often each still wins ----------
+// The times in 100 add up to 100. Rounded one by one, 995 runs in 1000 and 5 read "100 times in 100, Curry 1".
+{
+  const { ctx, page } = await device();
+  await page.goto(base);
+  // A decision's id seeds its nudging: Pizza wins 995 of the 1000 runs in din6, and 735 in din9.
+  for (const [id, taste, pair, said] of [['din6', 5, 0, 'Pizza still wins 100 times in 100.'], ['din9', 4, -2, 'Pizza still wins 74 times in 100, Curry 26.']]) {
+    await page.evaluate(([id, taste, pair]) => {
+      const { store, M } = window.onBalance;
+      const d = M.blankDecision();
+      Object.assign(d, { id, title: 'Dinner tonight', options: [{ id: 'a', name: 'Pizza' }, { id: 'b', name: 'Curry' }], criteria: [{ id: 'x', name: 'Taste', color: 0 }, { id: 'y', name: 'Price', color: 1 }] });
+      M.setPair(d.me.pairs, 'x', 'y', pair);
+      d.me.scores = { x: { a: taste, b: 3 }, y: { a: 3, b: 3 } };
+      store.put(d);
+    }, [id, taste, pair]);
+    await page.goto(base + `#/d/${id}/result`);
+    await page.locator('.sure').waitFor();
+    assert.equal(await page.locator('.sure').innerText(), `When every weight and score is nudged a little either way, ${said}`);
+  }
+  await ctx.close();
+}
+
 assert.deepEqual(problems.filter(p => !p.startsWith('failed:')), [], 'problems while using it');
 await browser.close();
 server.close();

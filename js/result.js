@@ -67,8 +67,9 @@ export function result(d) {
     const sub = !R ? (!unscored.length ? 'Everything else is ruled out.' : ruled ? `Everything else ${esc(who)} scored is ruled out.` : `The only choice ${esc(who)} scored.`)
       : level ? `Level with ${esc(n[R.id])} on ${w100}. The coin below might help.`
       : `comes out ahead of ${esc(n[R.id])}, ${w100} to ${r100}.`;
-    const others = alive.slice(1).map(r => `${esc(n[r.id])} ${Math.round(shares[r.id] * 100)}`).filter(s => !s.endsWith(' 0'));
-    const sure = R ? `When every weight and score is nudged a little either way, <b>${esc(n[W.id])}</b>${level ? '' : ' still'} wins <b>${Math.round(shares[W.id] * 100)} times in 100</b>${others.length ? `, ${listWords(others)}` : ''}.` : '';
+    const times = M.wholePercents(shares); // how often each still wins, in whole times in 100 that add up to 100
+    const others = alive.slice(1).map(r => `${esc(n[r.id])} ${times[r.id]}`).filter(s => !s.endsWith(' 0'));
+    const sure = R ? `When every weight and score is nudged a little either way, <b>${esc(n[W.id])}</b>${level ? '' : ' still'} wins <b>${times[W.id]} times in 100</b>${others.length ? `, ${listWords(others)}` : ''}.` : '';
     const decided = d.decided && d.options.find(o => o.id === d.decided.option);
     const label = R ? `A balance tipping towards ${n[W.id]}, ${w100}, over ${n[R.id]}, ${r100}` : `${n[W.id]}`;
 
