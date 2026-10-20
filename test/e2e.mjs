@@ -14,10 +14,12 @@ let pw;
 try { pw = require('playwright'); } catch { pw = require(join(execSync('npm root -g').toString().trim(), 'playwright')); }
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.webmanifest': 'application/manifest+json', '.json': 'application/json' };
+let swTail = ''; // added to the end of sw.js, to stand for a new version of it
 const server = createServer(async (req, res) => {
   const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   let body;
   try { body = await readFile(join(root, path === '/' ? 'index.html' : path)); } catch { res.writeHead(404); res.end(); return; }
+  if (path === '/sw.js') body = Buffer.concat([body, Buffer.from(swTail)]);
   res.writeHead(200, { 'content-type': TYPES[extname(path)] || 'text/html' });
   res.end(body);
 }).listen(0);
@@ -69,10 +71,10 @@ async function scoreAll(page, scores) {
 const mark = await device();
 let page = mark.page;
 // Every tool at junkdrawer.works/… shares one address, and so one cache storage. Another tool's offline copy,
-// made before On Balance's worker starts, has to survive it, while an old copy of On Balance's own goes
-// (checked once the worker is in charge, near the end).
+// made before On Balance's worker starts, has to survive it, even a tool whose name starts the same way
+// (on-balance-x), while an old copy of On Balance's own goes (checked once the worker is in charge, near the end).
 await page.goto(base + 'manifest.webmanifest');
-await page.evaluate(() => Promise.all(['another-tool-v1', 'on-balance-v0'].map(name => caches.open(name).then(c => c.put('index.html', new Response(name))))));
+await page.evaluate(() => Promise.all(['another-tool-v1', 'on-balance-x-v1', 'on-balance-v0'].map(name => caches.open(name).then(c => c.put('index.html', new Response(name))))));
 await page.goto(base);
 await page.evaluate(() => document.fonts.ready);
 assert.match(await text(page), /Weigh up a hard choice/);
@@ -225,11 +227,31 @@ await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { ti
 // The worker leaves other tools' offline copies alone, and clears out its own old ones.
 await page.waitForFunction(() => navigator.serviceWorker?.controller, null, { timeout: 20000 });
 assert.ok(await page.evaluate(() => caches.has('another-tool-v1')), 'the service worker deleted another tool’s offline copy');
+assert.ok(await page.evaluate(() => caches.has('on-balance-x-v1')), 'the service worker deleted the offline copy of a tool whose name starts like its own');
 assert.equal(await page.evaluate(() => caches.has('on-balance-v0')), false, 'the service worker kept an old copy of its own');
 await mark.ctx.setOffline(true);
 await page.reload();
 assert.match(await text(page), /Your decisions/, 'loads offline');
 await mark.ctx.setOffline(false);
+// The same when an update comes and a new version of the worker takes over.
+await page.evaluate(() => Promise.all(['on-balance-x-v1', 'on-balance-v0'].map(name => caches.open(name).then(c => c.put('index.html', new Response(name))))));
+// Wait for the new version to be activated, which comes once its activate step has cleared things out (its
+// controllerchange comes before). Listen before it's there, so an update the browser starts by itself counts too.
+await page.evaluate(async () => {
+  const r = await navigator.serviceWorker.getRegistration();
+  window.updated = new Promise((resolve, reject) => r.addEventListener('updatefound', () => {
+    const w = r.installing;
+    w.addEventListener('statechange', () => { if (w.state === 'activated') resolve(); else if (w.state === 'redundant') reject(new Error('the new version of the worker failed')); });
+  }));
+});
+swTail = '\n// a newer version\n';
+await page.evaluate(async () => {
+  await (await navigator.serviceWorker.getRegistration()).update();
+  await Promise.race([window.updated, new Promise((_, reject) => setTimeout(() => reject(new Error('the new version of the worker didn’t take over')), 20000))]);
+});
+swTail = '';
+assert.deepEqual(await page.evaluate(() => Promise.all(['another-tool-v1', 'on-balance-x-v1', 'on-balance-v0', 'on-balance-v1'].map(k => caches.has(k)))), [true, true, false, true],
+  'after an update: other tools’ copies kept, its old copy gone, its own copy there');
 
 // ---------- A link that isn't one of ours ----------
 // Ids from a link go into the page's markup as they are, so a link with ids the app didn't make is turned away.
